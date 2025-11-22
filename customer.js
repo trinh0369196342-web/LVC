@@ -4,6 +4,11 @@ let orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
 let adminOrders = JSON.parse(localStorage.getItem('adminOrders')) || [];
 let supportMessages = JSON.parse(localStorage.getItem('supportMessages')) || [];
 let users = JSON.parse(localStorage.getItem('users')) || [];
+let printPrices = JSON.parse(localStorage.getItem('printPrices')) || {
+    'text': 1000,
+    'print': 2000,
+    'extra_page': 500
+};
 
 // Khởi tạo trang
 document.addEventListener('DOMContentLoaded', function() {
@@ -23,6 +28,7 @@ function initializeCustomerPage() {
     setupCustomerEventListeners();
     updateAdminLinkVisibility();
     showSection('home-section');
+    updatePriceDisplay();
 }
 
 function setupCustomerEventListeners() {
@@ -50,10 +56,12 @@ function setupCustomerEventListeners() {
     const orderType = document.getElementById('order-type');
     const createOrder = document.getElementById('create-order');
     const resetForm = document.getElementById('reset-form');
+    const pageCount = document.getElementById('page-count');
     
     if (orderType) orderType.addEventListener('change', toggleOrderOptions);
     if (createOrder) createOrder.addEventListener('click', createOrder);
     if (resetForm) resetForm.addEventListener('click', resetOrderForm);
+    if (pageCount) pageCount.addEventListener('change', calculateTotalPrice);
     
     // Tài khoản
     const loginBtn = document.getElementById('login-btn');
@@ -158,6 +166,57 @@ function showMessage(message) {
     }
 }
 
+// ========== TÍNH NĂNG GIÁ IN MỚI ==========
+function updatePriceDisplay() {
+    const priceDisplay = document.getElementById('price-display');
+    if (priceDisplay) {
+        priceDisplay.innerHTML = `
+            <h3>Bảng Giá In Ấn</h3>
+            <div class="price-list">
+                <div class="price-item">
+                    <span>In chữ (trang đầu):</span>
+                    <span>${formatCurrency(printPrices.text)}</span>
+                </div>
+                <div class="price-item">
+                    <span>In ảnh/tài liệu (trang đầu):</span>
+                    <span>${formatCurrency(printPrices.print)}</span>
+                </div>
+                <div class="price-item">
+                    <span>Trang thêm:</span>
+                    <span>${formatCurrency(printPrices.extra_page)}/trang</span>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function calculateTotalPrice() {
+    const orderType = document.getElementById('order-type');
+    const pageCount = document.getElementById('page-count');
+    const totalPrice = document.getElementById('total-price');
+    
+    if (!orderType || !pageCount || !totalPrice) return;
+    
+    const type = orderType.value;
+    const pages = parseInt(pageCount.value) || 1;
+    
+    let price = 0;
+    if (type === 'text') {
+        price = printPrices.text + (pages - 1) * printPrices.extra_page;
+    } else if (type === 'print') {
+        price = printPrices.print + (pages - 1) * printPrices.extra_page;
+    }
+    
+    totalPrice.textContent = formatCurrency(price);
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND'
+    }).format(amount);
+}
+
 // ========== HÀM KHÁCH HÀNG ==========
 function checkLoginStatus() {
     const storedUser = localStorage.getItem('currentUser');
@@ -184,8 +243,9 @@ function toggleOrderOptions() {
     const orderType = document.getElementById('order-type').value;
     const printOptions = document.getElementById('print-options');
     const textOptions = document.getElementById('text-options');
+    const pageCountGroup = document.getElementById('page-count-group');
     
-    if (printOptions && textOptions) {
+    if (printOptions && textOptions && pageCountGroup) {
         if (orderType === 'print') {
             printOptions.style.display = 'block';
             textOptions.style.display = 'none';
@@ -193,7 +253,10 @@ function toggleOrderOptions() {
             printOptions.style.display = 'none';
             textOptions.style.display = 'block';
         }
+        pageCountGroup.style.display = 'block';
     }
+    
+    calculateTotalPrice();
 }
 
 function createOrder() {
@@ -206,8 +269,11 @@ function createOrder() {
     const fontSize = document.getElementById('font-size').value;
     const fontWeight = document.getElementById('font-weight').value;
     const orientation = document.querySelector('input[name="orientation"]:checked').value;
+    const pageCount = parseInt(document.getElementById('page-count').value) || 1;
     
     let content = '';
+    let fileData = null;
+    
     if (orderType === 'print') {
         const fileInput = document.getElementById('file-upload');
         if (!fileInput.files[0]) {
@@ -215,6 +281,12 @@ function createOrder() {
             return;
         }
         content = fileInput.files[0].name;
+        // Lưu thông tin file (trong thực tế cần upload lên server)
+        fileData = {
+            name: fileInput.files[0].name,
+            size: fileInput.files[0].size,
+            type: fileInput.files[0].type
+        };
     } else {
         const textContent = document.getElementById('text-content');
         if (!textContent.value.trim()) {
@@ -222,6 +294,14 @@ function createOrder() {
             return;
         }
         content = textContent.value;
+    }
+    
+    // Tính giá
+    let totalPrice = 0;
+    if (orderType === 'text') {
+        totalPrice = printPrices.text + (pageCount - 1) * printPrices.extra_page;
+    } else if (orderType === 'print') {
+        totalPrice = printPrices.print + (pageCount - 1) * printPrices.extra_page;
     }
     
     const newOrder = {
@@ -233,6 +313,9 @@ function createOrder() {
         fontSize: fontSize,
         fontWeight: fontWeight,
         orientation: orientation,
+        pageCount: pageCount,
+        totalPrice: totalPrice,
+        fileData: fileData,
         status: 'pending',
         createdAt: new Date().toISOString()
     };
@@ -253,6 +336,7 @@ function resetOrderForm() {
     if (orderForm) {
         orderForm.reset();
         toggleOrderOptions();
+        calculateTotalPrice();
     }
 }
 
@@ -281,6 +365,8 @@ function loadOrders() {
             <div class="order-details">
                 <p><strong>Loại:</strong> ${order.type === 'print' ? 'In ấn' : 'In chữ'}</p>
                 <p><strong>Nội dung:</strong> ${order.content}</p>
+                <p><strong>Số trang:</strong> ${order.pageCount}</p>
+                <p><strong>Thành tiền:</strong> ${formatCurrency(order.totalPrice)}</p>
                 <p><strong>Cỡ chữ:</strong> ${order.fontSize}pt</p>
                 <p><strong>Độ đậm:</strong> ${getFontWeightText(order.fontWeight)}</p>
                 <p><strong>Hướng in:</strong> ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}</p>
@@ -326,12 +412,14 @@ function remakeOrder(orderId) {
         
         document.getElementById('font-size').value = order.fontSize;
         document.getElementById('font-weight').value = order.fontWeight;
+        document.getElementById('page-count').value = order.pageCount;
         
         const orientationRadio = document.querySelector(`input[name="orientation"][value="${order.orientation}"]`);
         if (orientationRadio) {
             orientationRadio.checked = true;
         }
         
+        calculateTotalPrice();
         showMessage('Thông tin đơn hàng đã được điền sẵn. Vui lòng chỉnh sửa và tạo lại.');
     }
 }
@@ -527,6 +615,7 @@ function checkAdminLoginStatus() {
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
         updateAdminAccountDisplay();
+        loadPriceSettings();
     }
 }
 
@@ -558,6 +647,7 @@ function adminLogin() {
         updateAdminAccountDisplay();
         showMessage('Đăng nhập admin thành công!');
         updateCustomerLinkVisibility();
+        loadPriceSettings();
         return;
     }
     
@@ -569,6 +659,7 @@ function adminLogin() {
         updateAdminAccountDisplay();
         showMessage('Đăng nhập admin thành công!');
         updateCustomerLinkVisibility();
+        loadPriceSettings();
     } else {
         showMessage('Thông tin đăng nhập không đúng hoặc không có quyền admin');
     }
@@ -599,11 +690,90 @@ function updateAdminAccountDisplay() {
             <p><strong>Họ tên:</strong> ${currentUser.name}</p>
             <p><strong>Email:</strong> ${currentUser.email}</p>
             <p><strong>Vai trò:</strong> Quản trị viên</p>
+            ${currentUser.role === 'admin' ? `
+                <div class="admin-actions">
+                    <button onclick="showPriceSettings()" class="secondary">Cài đặt giá</button>
+                </div>
+            ` : ''}
         `;
     } else if (loginForm && accountInfo) {
         loginForm.style.display = 'block';
         accountInfo.style.display = 'none';
     }
+}
+
+// ========== TÍNH NĂNG QUẢN LÝ GIÁ MỚI ==========
+function showPriceSettings() {
+    const modal = document.getElementById('user-management-modal');
+    const form = document.getElementById('user-management-form');
+    
+    if (!modal || !form) return;
+    
+    form.innerHTML = `
+        <h3>Cài đặt giá in ấn</h3>
+        <div class="form-group">
+            <label for="price-text">Giá in chữ (trang đầu):</label>
+            <input type="number" id="price-text" value="${printPrices.text}" min="0">
+        </div>
+        <div class="form-group">
+            <label for="price-print">Giá in ảnh/tài liệu (trang đầu):</label>
+            <input type="number" id="price-print" value="${printPrices.print}" min="0">
+        </div>
+        <div class="form-group">
+            <label for="price-extra">Giá trang thêm:</label>
+            <input type="number" id="price-extra" value="${printPrices.extra_page}" min="0">
+        </div>
+        <div class="form-actions">
+            <button onclick="savePriceSettings()">Lưu giá</button>
+            <button class="secondary" onclick="resetPriceSettings()">Đặt lại mặc định</button>
+        </div>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+function loadPriceSettings() {
+    // Đã được load trong biến toàn cục
+}
+
+function savePriceSettings() {
+    const priceText = parseInt(document.getElementById('price-text').value);
+    const pricePrint = parseInt(document.getElementById('price-print').value);
+    const priceExtra = parseInt(document.getElementById('price-extra').value);
+    
+    if (isNaN(priceText) || isNaN(pricePrint) || isNaN(priceExtra)) {
+        showMessage('Vui lòng nhập giá hợp lệ');
+        return;
+    }
+    
+    printPrices = {
+        text: priceText,
+        print: pricePrint,
+        extra_page: priceExtra
+    };
+    
+    localStorage.setItem('printPrices', JSON.stringify(printPrices));
+    
+    const modal = document.getElementById('user-management-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    showMessage('Đã cập nhật giá thành công!');
+}
+
+function resetPriceSettings() {
+    printPrices = {
+        'text': 1000,
+        'print': 2000,
+        'extra_page': 500
+    };
+    
+    document.getElementById('price-text').value = printPrices.text;
+    document.getElementById('price-print').value = printPrices.print;
+    document.getElementById('price-extra').value = printPrices.extra_page;
+    
+    showMessage('Đã đặt lại giá mặc định');
 }
 
 function loadAdminOrders() {
@@ -633,12 +803,18 @@ function loadAdminOrders() {
                     <p><strong>Khách hàng:</strong> ${user.name} (${user.email})</p>
                     <p><strong>Loại:</strong> ${order.type === 'print' ? 'In ấn' : 'In chữ'}</p>
                     <p><strong>Nội dung:</strong> ${order.content}</p>
+                    <p><strong>Số trang:</strong> ${order.pageCount}</p>
+                    <p><strong>Thành tiền:</strong> ${formatCurrency(order.totalPrice)}</p>
                     <p><strong>Cỡ chữ:</strong> ${order.fontSize}pt</p>
                     <p><strong>Độ đậm:</strong> ${getFontWeightText(order.fontWeight)}</p>
                     <p><strong>Hướng in:</strong> ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}</p>
                     <p><strong>Ngày tạo:</strong> ${formatDate(order.createdAt)}</p>
                 </div>
                 <div class="order-actions">
+                    ${order.fileData ? `
+                        <button class="secondary" onclick="downloadFile('${order.id}')">Tải file</button>
+                    ` : ''}
+                    <button class="secondary" onclick="copyOrderInfo('${order.id}')">Sao chép</button>
                     ${order.status === 'pending' ? `
                         <button onclick="acceptOrder('${order.id}')">Nhận</button>
                         <button class="danger" onclick="cancelOrderAdmin('${order.id}')">Huỷ</button>
@@ -651,6 +827,55 @@ function loadAdminOrders() {
             </div>
         `;
     }).join('');
+}
+
+// ========== TÍNH NĂNG TẢI FILE VÀ SAO CHÉP MỚI ==========
+function downloadFile(orderId) {
+    const order = adminOrders.find(order => order.id === orderId);
+    if (!order || !order.fileData) {
+        showMessage('Không có file để tải');
+        return;
+    }
+    
+    // Trong thực tế, đây sẽ là API call để tải file từ server
+    // Hiện tại chỉ mô phỏng
+    showMessage(`Đang tải file: ${order.fileData.name}`);
+    
+    // Tạo một file tạm để tải xuống (mô phỏng)
+    const content = order.type === 'text' ? order.content : 'File in ấn từ khách hàng';
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = order.fileData.name || `order_${orderId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function copyOrderInfo(orderId) {
+    const order = adminOrders.find(order => order.id === orderId);
+    if (!order) return;
+    
+    const orderInfo = `
+ĐƠN HÀNG #${order.id}
+Khách hàng: ${order.userName}
+Loại: ${order.type === 'print' ? 'In ấn' : 'In chữ'}
+Nội dung: ${order.content}
+Số trang: ${order.pageCount}
+Thành tiền: ${formatCurrency(order.totalPrice)}
+Cỡ chữ: ${order.fontSize}pt
+Độ đậm: ${getFontWeightText(order.fontWeight)}
+Hướng in: ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}
+Ngày tạo: ${formatDate(order.createdAt)}
+    `.trim();
+    
+    navigator.clipboard.writeText(orderInfo).then(() => {
+        showMessage('Đã sao chép thông tin đơn hàng');
+    }).catch(() => {
+        showMessage('Không thể sao chép thông tin');
+    });
 }
 
 function acceptOrder(orderId) {
