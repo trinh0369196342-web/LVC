@@ -74,7 +74,7 @@ function setupCustomerEventListeners() {
         });
     }
     
-    // Form đơn hàng
+    // Form đơn hàng - THÊM SỰ KIỆN CHO TÍNH GIÁ
     const orderType = document.getElementById('order-type');
     const createOrder = document.getElementById('create-order');
     const resetForm = document.getElementById('reset-form');
@@ -94,7 +94,10 @@ function setupCustomerEventListeners() {
         resetForm.addEventListener('click', resetOrderForm);
     }
     if (tableCount) {
-        tableCount.addEventListener('change', generateTableInputs);
+        tableCount.addEventListener('change', () => {
+            generateTableInputs();
+            calculateTotalPrice();
+        });
     }
     if (pageCount) {
         pageCount.addEventListener('change', calculateTotalPrice);
@@ -157,6 +160,10 @@ function updatePriceDisplay() {
                         <span class="price-label">Trang thêm:</span>
                         <span class="price-value">${formatCurrency(printPrices.extra_page)}/trang</span>
                     </div>
+                    <div class="price-item">
+                        <span class="price-label">Phí mỗi bảng:</span>
+                        <span class="price-value">${formatCurrency(500)}/bảng</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -187,11 +194,11 @@ function generateTableInputs() {
             tableDiv.innerHTML = `
                 <div class="form-group">
                     <label>Tiêu đề bảng ${i}:</label>
-                    <input type="text" class="table-title" placeholder="Nhập tiêu đề bảng ${i}" required>
+                    <input type="text" class="table-title" placeholder="Nhập tiêu đề bảng ${i}">
                 </div>
                 <div class="form-group">
                     <label>Nội dung bảng ${i}:</label>
-                    <textarea class="table-content" rows="3" placeholder="Nhập nội dung bảng ${i}" required></textarea>
+                    <textarea class="table-content" rows="3" placeholder="Nhập nội dung bảng ${i}"></textarea>
                 </div>
             `;
             tablesContainer.appendChild(tableDiv);
@@ -364,6 +371,7 @@ function createOrder() {
     let fileData = null;
     let tables = [];
     
+    // Kiểm tra dữ liệu đầu vào
     if (orderType === 'print') {
         const fileInput = document.getElementById('file-upload');
         if (!fileInput.files[0]) {
@@ -390,33 +398,24 @@ function createOrder() {
             const tableContents = document.querySelectorAll('.table-content');
             
             for (let i = 0; i < tableCount; i++) {
-                if (tableTitles[i] && tableContents[i] && 
-                    tableTitles[i].value.trim() && tableContents[i].value.trim()) {
-                    tables.push({
-                        title: tableTitles[i].value,
-                        content: tableContents[i].value
-                    });
+                if (tableTitles[i] && tableContents[i]) {
+                    const title = tableTitles[i].value.trim();
+                    const tableContent = tableContents[i].value.trim();
+                    
+                    if (title || tableContent) {
+                        tables.push({
+                            title: title || `Bảng ${i + 1}`,
+                            content: tableContent || 'Nội dung trống'
+                        });
+                    }
                 }
             }
         }
     }
     
-    // Tính giá - SỬA LẠI PHÉP TÍNH
-    let totalPrice = 0;
-    if (orderType === 'text') {
-        totalPrice = printPrices.text + (pageCount - 1) * printPrices.extra_page;
-        console.log(`Tính giá in chữ: ${printPrices.text} + (${pageCount-1} * ${printPrices.extra_page}) = ${totalPrice}`);
-    } else if (orderType === 'print') {
-        totalPrice = printPrices.print + (pageCount - 1) * printPrices.extra_page;
-        console.log(`Tính giá in ấn: ${printPrices.print} + (${pageCount-1} * ${printPrices.extra_page}) = ${totalPrice}`);
-    }
-    
-    // Thêm phí cho bảng nếu có
-    if (tableCount > 0) {
-        const tableFee = tableCount * 500; // 500đ mỗi bảng
-        totalPrice += tableFee;
-        console.log(`Thêm phí ${tableCount} bảng: +${tableFee} = ${totalPrice}`);
-    }
+    // Tính giá
+    let totalPrice = calculateOrderPrice(orderType, pageCount, tableCount);
+    console.log(`Tổng tiền: ${formatCurrency(totalPrice)}`);
     
     const newOrder = {
         id: generateOrderId(),
@@ -439,6 +438,7 @@ function createOrder() {
     
     console.log('Đơn hàng mới:', newOrder);
     
+    // Lưu đơn hàng
     orders.push(newOrder);
     localStorage.setItem('customerOrders', JSON.stringify(orders));
     
@@ -446,8 +446,26 @@ function createOrder() {
     adminOrders.push(newOrder);
     localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
     
-    showMessage(`Tạo đơn hàng thành công! Tổng tiền: ${formatCurrency(totalPrice)}`);
+    showMessage(`✅ Tạo đơn hàng thành công! Tổng tiền: ${formatCurrency(totalPrice)}`);
     resetOrderForm();
+}
+
+// Hàm tính giá đơn hàng
+function calculateOrderPrice(orderType, pageCount, tableCount) {
+    let price = 0;
+    
+    if (orderType === 'text') {
+        price = printPrices.text + (pageCount - 1) * printPrices.extra_page;
+    } else if (orderType === 'print') {
+        price = printPrices.print + (pageCount - 1) * printPrices.extra_page;
+    }
+    
+    // Thêm phí cho bảng nếu có
+    if (tableCount > 0) {
+        price += tableCount * 500; // 500đ mỗi bảng
+    }
+    
+    return price;
 }
 
 function resetOrderForm() {
@@ -460,7 +478,7 @@ function resetOrderForm() {
     }
 }
 
-// ========== TÍNH GIÁ TỰ ĐỘNG - SỬA LẠI ==========
+// ========== TÍNH GIÁ TỰ ĐỘNG ==========
 function calculateTotalPrice() {
     const orderType = document.getElementById('order-type');
     const pageCount = document.getElementById('page-count');
@@ -473,19 +491,7 @@ function calculateTotalPrice() {
     const pages = parseInt(pageCount.value) || 1;
     const tables = parseInt(tableCount ? tableCount.value : 0) || 0;
     
-    let price = 0;
-    
-    // Tính giá cơ bản theo loại và số trang
-    if (type === 'text') {
-        price = printPrices.text + (pages - 1) * printPrices.extra_page;
-    } else if (type === 'print') {
-        price = printPrices.print + (pages - 1) * printPrices.extra_page;
-    }
-    
-    // Thêm phí cho bảng nếu có
-    if (tables > 0) {
-        price += tables * 500; // 500đ mỗi bảng
-    }
+    const price = calculateOrderPrice(type, pages, tables);
     
     console.log(`Tính giá tự động: ${formatCurrency(price)} (${pages} trang, ${tables} bảng)`);
     totalPrice.textContent = formatCurrency(price);
@@ -535,6 +541,17 @@ function loadOrders() {
             `;
         }
         
+        // Hiển thị thông tin bảng nếu có
+        let tablesInfo = '';
+        if (order.tables && order.tables.length > 0) {
+            tablesInfo = order.tables.map((table, index) => `
+                <div class="table-info">
+                    <p><strong>Bảng ${index + 1}:</strong> ${table.title}</p>
+                    <p><em>${table.content}</em></p>
+                </div>
+            `).join('');
+        }
+        
         return `
             <div class="order-item">
                 <div class="order-header">
@@ -551,6 +568,7 @@ function loadOrders() {
                     <p><strong>Độ đậm:</strong> ${getFontWeightText(order.fontWeight)}</p>
                     <p><strong>Hướng in:</strong> ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}</p>
                     <p><strong>Ngày tạo:</strong> ${formatDate(order.createdAt)}</p>
+                    ${tablesInfo}
                 </div>
                 ${paymentSection}
                 <div class="order-actions">
@@ -576,7 +594,7 @@ function confirmPayment(orderId) {
             localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
         }
         
-        showMessage('Đã xác nhận thanh toán. Đơn hàng sẽ được xử lý.');
+        showMessage('✅ Đã xác nhận thanh toán. Đơn hàng sẽ được xử lý.');
         loadOrders();
     }
 }
@@ -620,7 +638,7 @@ function remakeOrder(orderId) {
         }
         
         generateTableInputs();
-        calculateTotalPrice(); // Tính lại giá
+        calculateTotalPrice();
         showMessage('Thông tin đơn hàng đã được điền sẵn. Vui lòng chỉnh sửa và tạo lại.');
     }
 }
@@ -661,7 +679,7 @@ function register() {
     users.push(newUser);
     localStorage.setItem('users', JSON.stringify(users));
     
-    showMessage('Đăng ký thành công! Vui lòng đăng nhập.');
+    showMessage('✅ Đăng ký thành công! Vui lòng đăng nhập.');
     showLoginForm();
 }
 
@@ -685,7 +703,7 @@ function login() {
             role: 'admin'
         };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
+        showMessage('✅ Đăng nhập admin thành công! Đang chuyển hướng...');
         setTimeout(() => {
             window.location.href = 'admin.html';
         }, 1500);
@@ -706,7 +724,7 @@ function login() {
         currentUser = user;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         updateAccountDisplay();
-        showMessage('Đăng nhập thành công!');
+        showMessage('✅ Đăng nhập thành công!');
         updateAdminLinkVisibility();
     } else {
         showMessage('Email hoặc mật khẩu không đúng');
@@ -784,7 +802,7 @@ function sendSupportMessage() {
     localStorage.setItem('supportMessages', JSON.stringify(supportMessages));
     
     document.getElementById('support-message').value = '';
-    showMessage('Đã gửi yêu cầu hỗ trợ');
+    showMessage('✅ Đã gửi yêu cầu hỗ trợ');
     loadSupportHistory();
 }
 
@@ -856,7 +874,7 @@ function adminLogin() {
         
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         updateAdminAccountDisplay();
-        showMessage('Đăng nhập admin thành công!');
+        showMessage('✅ Đăng nhập admin thành công!');
         updateCustomerLinkVisibility();
         return;
     }
@@ -867,7 +885,7 @@ function adminLogin() {
         currentUser = user;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         updateAdminAccountDisplay();
-        showMessage('Đăng nhập admin thành công!');
+        showMessage('✅ Đăng nhập admin thành công!');
         updateCustomerLinkVisibility();
     } else {
         showMessage('Thông tin đăng nhập không đúng hoặc không có quyền admin');
@@ -899,6 +917,9 @@ function updateAdminAccountDisplay() {
             <p><strong>Họ tên:</strong> ${currentUser.name}</p>
             <p><strong>Email:</strong> ${currentUser.email}</p>
             <p><strong>Vai trò:</strong> Quản trị viên</p>
+            <div class="admin-actions">
+                <button onclick="showPriceSettings()" class="secondary">Cài đặt giá in</button>
+            </div>
         `;
     } else if (loginForm && accountInfo) {
         loginForm.style.display = 'block';
@@ -925,7 +946,7 @@ function loadAdminOrders() {
         
         let priceSettingsBtn = '';
         if (order.status === 'pending') {
-            priceSettingsBtn = `<button class="secondary" onclick="showPriceSettings('${order.id}')">Điều chỉnh giá</button>`;
+            priceSettingsBtn = `<button class="secondary" onclick="showOrderPriceSettings('${order.id}')">Điều chỉnh giá</button>`;
         }
         
         return `
@@ -1021,7 +1042,7 @@ function saveSystemPriceSettings() {
         modal.style.display = 'none';
     }
     
-    showMessage('Đã cập nhật giá hệ thống thành công!');
+    showMessage('✅ Đã cập nhật giá hệ thống thành công!');
     
     // Cập nhật lại hiển thị giá trên trang khách hàng nếu đang mở
     if (!document.querySelector('h1').textContent.includes('ADMIN')) {
@@ -1095,7 +1116,7 @@ function saveAdjustedPrice(orderId) {
         modal.style.display = 'none';
     }
     
-    showMessage('Đã cập nhật giá thành công!');
+    showMessage('✅ Đã cập nhật giá thành công!');
     loadAdminOrders();
 }
 
@@ -1103,17 +1124,7 @@ function calculateAutoPrice(orderId) {
     const order = adminOrders.find(order => order.id === orderId);
     if (!order) return;
     
-    let calculatedPrice = 0;
-    if (order.type === 'text') {
-        calculatedPrice = printPrices.text + (order.pageCount - 1) * printPrices.extra_page;
-    } else if (order.type === 'print') {
-        calculatedPrice = printPrices.print + (order.pageCount - 1) * printPrices.extra_page;
-    }
-    
-    // Thêm phí cho bảng
-    if (order.tableCount > 0) {
-        calculatedPrice += order.tableCount * 500;
-    }
+    const calculatedPrice = calculateOrderPrice(order.type, order.pageCount, order.tableCount);
     
     document.getElementById('adjust-price').value = calculatedPrice;
     showMessage(`Giá tự động: ${formatCurrency(calculatedPrice)}`);
@@ -1160,7 +1171,7 @@ Trạng thái: ${getStatusText(order.status)}
     `.trim();
     
     navigator.clipboard.writeText(orderInfo).then(() => {
-        showMessage('Đã sao chép thông tin đơn hàng');
+        showMessage('✅ Đã sao chép thông tin đơn hàng');
     }).catch(() => {
         showMessage('Không thể sao chép thông tin');
     });
@@ -1178,7 +1189,7 @@ function acceptOrder(orderId) {
             localStorage.setItem('customerOrders', JSON.stringify(orders));
         }
         
-        showMessage('Đã nhận đơn hàng');
+        showMessage('✅ Đã nhận đơn hàng');
         loadAdminOrders();
     }
 }
@@ -1195,7 +1206,7 @@ function completeOrder(orderId) {
             localStorage.setItem('customerOrders', JSON.stringify(orders));
         }
         
-        showMessage('Đã hoàn thành đơn hàng');
+        showMessage('✅ Đã hoàn thành đơn hàng');
         loadAdminOrders();
     }
 }
@@ -1321,7 +1332,7 @@ function saveUserChanges(userId) {
         modal.style.display = 'none';
     }
     
-    showMessage('Đã cập nhật thông tin người dùng');
+    showMessage('✅ Đã cập nhật thông tin người dùng');
     loadUserStatistics();
 }
 
@@ -1335,7 +1346,7 @@ function deleteUser(userId) {
             modal.style.display = 'none';
         }
         
-        showMessage('Đã xoá tài khoản');
+        showMessage('✅ Đã xoá tài khoản');
         loadUserStatistics();
     }
 }
@@ -1384,7 +1395,7 @@ function resolveSupport(messageId) {
         supportMessages[msgIndex].status = 'completed';
         localStorage.setItem('supportMessages', JSON.stringify(supportMessages));
         
-        showMessage('Đã đánh dấu tin nhắn đã xử lý');
+        showMessage('✅ Đã đánh dấu tin nhắn đã xử lý');
         loadAdminSupport();
     }
 }
