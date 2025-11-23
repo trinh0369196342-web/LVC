@@ -294,3 +294,230 @@ footer a:hover {
     margin: 5% auto;
   }
 }
+/* ========== STYLE MỚI CHO TÍNH NĂNG MỚI ========== */
+
+/* Hiển thị giá */
+.price-display {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.price-info h3 {
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.price-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.price-item:last-child {
+  border-bottom: none;
+}
+
+.price-label {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.price-value {
+  color: #28a745;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* Phần bảng nhập số */
+.table-input-group {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.table-input-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Tổng tiền */
+.price-summary {
+  background: #e7f3ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+  margin: 1rem 0;
+  font-size: 1.1rem;
+}
+
+#total-price {
+  color: #007bff;
+  font-size: 1.2rem;
+}
+
+/* Thanh toán */
+.payment-section {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.payment-section h4 {
+  color: #856404;
+  margin-bottom: 0.5rem;
+}
+
+.payment-info {
+  background: white;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.qr-code {
+  text-align: center;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.qr-placeholder {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.payment-btn {
+  background: #28a745;
+  color: white;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.payment-btn:hover {
+  background: #218838;
+}
+
+.payment-section.paid {
+  background: #d4edda;
+  border-color: #c3e6cb;
+}
+
+/* Radio group */
+.radio-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+/* Form switch */
+.form-switch {
+  text-align: center;
+  margin-top: 1rem;
+  color: #6c757d;
+}
+
+.form-switch a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.form-switch a:hover {
+  text-decoration: underline;
+}
+
+/* Section info */
+.section-info {
+  background: #f8f9fa;
+  border-left: 4px solid #007bff;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.section-info p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+/* Admin note */
+.admin-note {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.admin-note p {
+  margin: 0.25rem 0;
+}
+
+/* Admin actions */
+.admin-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Payment status */
+.payment-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.payment-status.paid {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.payment-status.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .price-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .admin-actions {
+    flex-direction: column;
+  }
+  
+  .radio-group {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

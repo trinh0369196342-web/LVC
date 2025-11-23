@@ -12,56 +12,93 @@ let printPrices = JSON.parse(localStorage.getItem('printPrices')) || {
 
 // Khởi tạo trang
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Đang khởi tạo trang...');
+    
     // Kiểm tra xem đang ở trang nào
-    const isAdminPage = document.querySelector('h1').textContent.includes('ADMIN');
+    const isAdminPage = document.querySelector('h1') && document.querySelector('h1').textContent.includes('ADMIN');
     
     if (isAdminPage) {
+        console.log('Đang ở trang ADMIN');
         initializeAdminPage();
     } else {
+        console.log('Đang ở trang KHÁCH HÀNG');
         initializeCustomerPage();
     }
 });
 
 // ========== TRANG KHÁCH HÀNG ==========
 function initializeCustomerPage() {
+    console.log('Khởi tạo trang khách hàng');
     checkLoginStatus();
     setupCustomerEventListeners();
     updateAdminLinkVisibility();
     showSection('home-section');
     updatePriceDisplay();
+    calculateTotalPrice(); // Tính giá ngay khi khởi tạo
 }
 
 function setupCustomerEventListeners() {
+    console.log('Thiết lập sự kiện cho khách hàng');
+    
     // Navigation
     const navHome = document.getElementById('nav-home');
     const navOrders = document.getElementById('nav-orders');
     const navSupport = document.getElementById('nav-support');
     const navAccount = document.getElementById('nav-account');
     
-    if (navHome) navHome.addEventListener('click', () => showSection('home-section'));
-    if (navOrders) navOrders.addEventListener('click', () => {
-        showSection('orders-section');
-        loadOrders();
-    });
-    if (navSupport) navSupport.addEventListener('click', () => {
-        showSection('support-section');
-        loadSupportHistory();
-    });
-    if (navAccount) navAccount.addEventListener('click', () => {
-        showSection('account-section');
-        updateAccountDisplay();
-    });
+    if (navHome) {
+        navHome.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('home-section');
+        });
+    }
+    if (navOrders) {
+        navOrders.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('orders-section');
+            loadOrders();
+        });
+    }
+    if (navSupport) {
+        navSupport.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('support-section');
+            loadSupportHistory();
+        });
+    }
+    if (navAccount) {
+        navAccount.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('account-section');
+            updateAccountDisplay();
+        });
+    }
     
     // Form đơn hàng
     const orderType = document.getElementById('order-type');
     const createOrder = document.getElementById('create-order');
     const resetForm = document.getElementById('reset-form');
     const tableCount = document.getElementById('table-count');
+    const pageCount = document.getElementById('page-count');
     
-    if (orderType) orderType.addEventListener('change', toggleOrderOptions);
-    if (createOrder) createOrder.addEventListener('click', createOrder);
-    if (resetForm) resetForm.addEventListener('click', resetOrderForm);
-    if (tableCount) tableCount.addEventListener('change', generateTableInputs);
+    if (orderType) {
+        orderType.addEventListener('change', () => {
+            toggleOrderOptions();
+            calculateTotalPrice();
+        });
+    }
+    if (createOrder) {
+        createOrder.addEventListener('click', createOrder);
+    }
+    if (resetForm) {
+        resetForm.addEventListener('click', resetOrderForm);
+    }
+    if (tableCount) {
+        tableCount.addEventListener('change', generateTableInputs);
+    }
+    if (pageCount) {
+        pageCount.addEventListener('change', calculateTotalPrice);
+    }
     
     // Tài khoản
     const loginBtn = document.getElementById('login-btn');
@@ -73,8 +110,18 @@ function setupCustomerEventListeners() {
     if (loginBtn) loginBtn.addEventListener('click', login);
     if (registerBtn) registerBtn.addEventListener('click', register);
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
-    if (showRegister) showRegister.addEventListener('click', showRegisterForm);
-    if (showLogin) showLogin.addEventListener('click', showLoginForm);
+    if (showRegister) {
+        showRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            showRegisterForm();
+        });
+    }
+    if (showLogin) {
+        showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLoginForm();
+        });
+    }
     
     // Hỗ trợ
     const sendSupport = document.getElementById('send-support');
@@ -113,6 +160,7 @@ function updatePriceDisplay() {
                 </div>
             </div>
         `;
+        console.log('Đã cập nhật hiển thị giá');
     }
 }
 
@@ -153,6 +201,7 @@ function generateTableInputs() {
 
 // ========== TRANG ADMIN ==========
 function initializeAdminPage() {
+    console.log('Khởi tạo trang admin');
     checkAdminLoginStatus();
     setupAdminEventListeners();
     updateCustomerLinkVisibility();
@@ -160,28 +209,42 @@ function initializeAdminPage() {
 }
 
 function setupAdminEventListeners() {
+    console.log('Thiết lập sự kiện cho admin');
+    
     // Navigation admin
     const navOrders = document.getElementById('nav-orders');
     const navStatistics = document.getElementById('nav-statistics');
     const navSupport = document.getElementById('nav-support');
     const navAccount = document.getElementById('nav-account');
     
-    if (navOrders) navOrders.addEventListener('click', () => {
-        showSection('orders-section');
-        loadAdminOrders();
-    });
-    if (navStatistics) navStatistics.addEventListener('click', () => {
-        showSection('statistics-section');
-        loadUserStatistics();
-    });
-    if (navSupport) navSupport.addEventListener('click', () => {
-        showSection('support-section');
-        loadAdminSupport();
-    });
-    if (navAccount) navAccount.addEventListener('click', () => {
-        showSection('account-section');
-        updateAdminAccountDisplay();
-    });
+    if (navOrders) {
+        navOrders.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('orders-section');
+            loadAdminOrders();
+        });
+    }
+    if (navStatistics) {
+        navStatistics.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('statistics-section');
+            loadUserStatistics();
+        });
+    }
+    if (navSupport) {
+        navSupport.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('support-section');
+            loadAdminSupport();
+        });
+    }
+    if (navAccount) {
+        navAccount.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('account-section');
+            updateAdminAccountDisplay();
+        });
+    }
     
     // Đăng nhập admin
     const adminLoginBtn = document.getElementById('admin-login-btn');
@@ -202,6 +265,7 @@ function setupAdminEventListeners() {
 
 // ========== HÀM CHUNG ==========
 function showSection(sectionId) {
+    console.log('Chuyển đến section:', sectionId);
     document.querySelectorAll('.section').forEach(section => {
         section.classList.remove('active');
     });
@@ -212,6 +276,7 @@ function showSection(sectionId) {
 }
 
 function showMessage(message) {
+    console.log('Hiển thị thông báo:', message);
     const modal = document.getElementById('message-modal');
     const messageElement = document.getElementById('modal-message');
     
@@ -239,6 +304,7 @@ function checkLoginStatus() {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
+        console.log('Người dùng đã đăng nhập:', currentUser);
         
         if (currentUser.role === 'admin') {
             window.location.href = 'admin.html';
@@ -246,6 +312,8 @@ function checkLoginStatus() {
         }
         
         updateAccountDisplay();
+    } else {
+        console.log('Chưa có người dùng đăng nhập');
     }
 }
 
@@ -257,13 +325,13 @@ function updateAdminLinkVisibility() {
 }
 
 function toggleOrderOptions() {
-    const orderType = document.getElementById('order-type').value;
+    const orderType = document.getElementById('order-type');
     const printOptions = document.getElementById('print-options');
     const textOptions = document.getElementById('text-options');
     const tableSection = document.getElementById('table-section');
     
     if (printOptions && textOptions && tableSection) {
-        if (orderType === 'print') {
+        if (orderType.value === 'print') {
             printOptions.style.display = 'block';
             textOptions.style.display = 'none';
             tableSection.style.display = 'none';
@@ -273,11 +341,11 @@ function toggleOrderOptions() {
             tableSection.style.display = 'block';
         }
     }
-    
-    calculateTotalPrice();
 }
 
 function createOrder() {
+    console.log('Bắt đầu tạo đơn hàng...');
+    
     if (!currentUser) {
         showMessage('Vui lòng đăng nhập để tạo đơn hàng');
         return;
@@ -289,6 +357,8 @@ function createOrder() {
     const orientation = document.querySelector('input[name="orientation"]:checked').value;
     const pageCount = parseInt(document.getElementById('page-count').value) || 1;
     const tableCount = parseInt(document.getElementById('table-count').value) || 0;
+    
+    console.log('Thông tin đơn hàng:', { orderType, fontSize, fontWeight, orientation, pageCount, tableCount });
     
     let content = '';
     let fileData = null;
@@ -320,7 +390,8 @@ function createOrder() {
             const tableContents = document.querySelectorAll('.table-content');
             
             for (let i = 0; i < tableCount; i++) {
-                if (tableTitles[i] && tableContents[i]) {
+                if (tableTitles[i] && tableContents[i] && 
+                    tableTitles[i].value.trim() && tableContents[i].value.trim()) {
                     tables.push({
                         title: tableTitles[i].value,
                         content: tableContents[i].value
@@ -330,12 +401,21 @@ function createOrder() {
         }
     }
     
-    // Tính giá
+    // Tính giá - SỬA LẠI PHÉP TÍNH
     let totalPrice = 0;
     if (orderType === 'text') {
         totalPrice = printPrices.text + (pageCount - 1) * printPrices.extra_page;
+        console.log(`Tính giá in chữ: ${printPrices.text} + (${pageCount-1} * ${printPrices.extra_page}) = ${totalPrice}`);
     } else if (orderType === 'print') {
         totalPrice = printPrices.print + (pageCount - 1) * printPrices.extra_page;
+        console.log(`Tính giá in ấn: ${printPrices.print} + (${pageCount-1} * ${printPrices.extra_page}) = ${totalPrice}`);
+    }
+    
+    // Thêm phí cho bảng nếu có
+    if (tableCount > 0) {
+        const tableFee = tableCount * 500; // 500đ mỗi bảng
+        totalPrice += tableFee;
+        console.log(`Thêm phí ${tableCount} bảng: +${tableFee} = ${totalPrice}`);
     }
     
     const newOrder = {
@@ -357,6 +437,8 @@ function createOrder() {
         createdAt: new Date().toISOString()
     };
     
+    console.log('Đơn hàng mới:', newOrder);
+    
     orders.push(newOrder);
     localStorage.setItem('customerOrders', JSON.stringify(orders));
     
@@ -374,7 +456,39 @@ function resetOrderForm() {
         orderForm.reset();
         toggleOrderOptions();
         generateTableInputs();
+        calculateTotalPrice(); // Reset tính giá
     }
+}
+
+// ========== TÍNH GIÁ TỰ ĐỘNG - SỬA LẠI ==========
+function calculateTotalPrice() {
+    const orderType = document.getElementById('order-type');
+    const pageCount = document.getElementById('page-count');
+    const tableCount = document.getElementById('table-count');
+    const totalPrice = document.getElementById('total-price');
+    
+    if (!orderType || !pageCount || !totalPrice) return;
+    
+    const type = orderType.value;
+    const pages = parseInt(pageCount.value) || 1;
+    const tables = parseInt(tableCount ? tableCount.value : 0) || 0;
+    
+    let price = 0;
+    
+    // Tính giá cơ bản theo loại và số trang
+    if (type === 'text') {
+        price = printPrices.text + (pages - 1) * printPrices.extra_page;
+    } else if (type === 'print') {
+        price = printPrices.print + (pages - 1) * printPrices.extra_page;
+    }
+    
+    // Thêm phí cho bảng nếu có
+    if (tables > 0) {
+        price += tables * 500; // 500đ mỗi bảng
+    }
+    
+    console.log(`Tính giá tự động: ${formatCurrency(price)} (${pages} trang, ${tables} bảng)`);
+    totalPrice.textContent = formatCurrency(price);
 }
 
 function loadOrders() {
@@ -506,6 +620,7 @@ function remakeOrder(orderId) {
         }
         
         generateTableInputs();
+        calculateTotalPrice(); // Tính lại giá
         showMessage('Thông tin đơn hàng đã được điền sẵn. Vui lòng chỉnh sửa và tạo lại.');
     }
 }
@@ -553,6 +668,8 @@ function register() {
 function login() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
+    
+    console.log('Đang đăng nhập với:', email);
     
     if (!email || !password) {
         showMessage('Vui lòng điền đầy đủ thông tin');
@@ -632,14 +749,12 @@ function updateAccountDisplay() {
     }
 }
 
-function showRegisterForm(e) {
-    e.preventDefault();
+function showRegisterForm() {
     document.getElementById('login-form').style.display = 'none';
     document.getElementById('register-form').style.display = 'block';
 }
 
-function showLoginForm(e) {
-    if (e) e.preventDefault();
+function showLoginForm() {
     document.getElementById('login-form').style.display = 'block';
     document.getElementById('register-form').style.display = 'none';
 }
@@ -708,6 +823,7 @@ function checkAdminLoginStatus() {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
+        console.log('Admin đã đăng nhập:', currentUser);
         updateAdminAccountDisplay();
     }
 }
@@ -722,6 +838,8 @@ function updateCustomerLinkVisibility() {
 function adminLogin() {
     const email = document.getElementById('admin-email').value;
     const password = document.getElementById('admin-password').value;
+    
+    console.log('Admin đang đăng nhập với:', email);
     
     if (!email || !password) {
         showMessage('Vui lòng điền đầy đủ thông tin');
@@ -850,7 +968,83 @@ function loadAdminOrders() {
 }
 
 // ========== TÍNH NĂNG ĐIỀU CHỈNH GIÁ CHO ADMIN ==========
-function showPriceSettings(orderId) {
+function showPriceSettings() {
+    const modal = document.getElementById('user-management-modal');
+    const form = document.getElementById('user-management-form');
+    
+    if (!modal || !form) return;
+    
+    form.innerHTML = `
+        <h3>Cài đặt giá in ấn toàn hệ thống</h3>
+        <div class="form-group">
+            <label for="price-text">Giá in chữ (trang đầu):</label>
+            <input type="number" id="price-text" value="${printPrices.text}" min="0">
+        </div>
+        <div class="form-group">
+            <label for="price-print">Giá in ảnh/tài liệu (trang đầu):</label>
+            <input type="number" id="price-print" value="${printPrices.print}" min="0">
+        </div>
+        <div class="form-group">
+            <label for="price-extra">Giá trang thêm:</label>
+            <input type="number" id="price-extra" value="${printPrices.extra_page}" min="0">
+        </div>
+        <div class="form-actions">
+            <button onclick="saveSystemPriceSettings()">Lưu cài đặt giá</button>
+            <button class="secondary" onclick="resetSystemPriceSettings()">Đặt lại mặc định</button>
+        </div>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+function saveSystemPriceSettings() {
+    const priceText = parseInt(document.getElementById('price-text').value);
+    const pricePrint = parseInt(document.getElementById('price-print').value);
+    const priceExtra = parseInt(document.getElementById('price-extra').value);
+    
+    if (isNaN(priceText) || isNaN(pricePrint) || isNaN(priceExtra) || 
+        priceText < 0 || pricePrint < 0 || priceExtra < 0) {
+        showMessage('Vui lòng nhập giá hợp lệ (số không âm)');
+        return;
+    }
+    
+    printPrices = {
+        text: priceText,
+        print: pricePrint,
+        extra_page: priceExtra
+    };
+    
+    localStorage.setItem('printPrices', JSON.stringify(printPrices));
+    
+    const modal = document.getElementById('user-management-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    showMessage('Đã cập nhật giá hệ thống thành công!');
+    
+    // Cập nhật lại hiển thị giá trên trang khách hàng nếu đang mở
+    if (!document.querySelector('h1').textContent.includes('ADMIN')) {
+        updatePriceDisplay();
+        calculateTotalPrice();
+    }
+}
+
+function resetSystemPriceSettings() {
+    printPrices = {
+        'text': 1000,
+        'print': 2000,
+        'extra_page': 500
+    };
+    
+    document.getElementById('price-text').value = printPrices.text;
+    document.getElementById('price-print').value = printPrices.print;
+    document.getElementById('price-extra').value = printPrices.extra_page;
+    
+    showMessage('Đã đặt lại giá mặc định');
+}
+
+function showOrderPriceSettings(orderId) {
     const order = adminOrders.find(order => order.id === orderId);
     if (!order) return;
     
@@ -914,6 +1108,11 @@ function calculateAutoPrice(orderId) {
         calculatedPrice = printPrices.text + (order.pageCount - 1) * printPrices.extra_page;
     } else if (order.type === 'print') {
         calculatedPrice = printPrices.print + (order.pageCount - 1) * printPrices.extra_page;
+    }
+    
+    // Thêm phí cho bảng
+    if (order.tableCount > 0) {
+        calculatedPrice += order.tableCount * 500;
     }
     
     document.getElementById('adjust-price').value = calculatedPrice;
@@ -1225,25 +1424,4 @@ function getFontWeightText(weight) {
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN');
-}
-
-// ========== TÍNH GIÁ TỰ ĐỘNG ==========
-function calculateTotalPrice() {
-    const orderType = document.getElementById('order-type');
-    const pageCount = document.getElementById('page-count');
-    const totalPrice = document.getElementById('total-price');
-    
-    if (!orderType || !pageCount || !totalPrice) return;
-    
-    const type = orderType.value;
-    const pages = parseInt(pageCount.value) || 1;
-    
-    let price = 0;
-    if (type === 'text') {
-        price = printPrices.text + (pages - 1) * printPrices.extra_page;
-    } else if (type === 'print') {
-        price = printPrices.print + (pages - 1) * printPrices.extra_page;
-    }
-    
-    totalPrice.textContent = formatCurrency(price);
 }
