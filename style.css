@@ -521,11 +521,76 @@ footer a:hover {
     gap: 0.5rem;
   }
 }
-/* Thêm vào file style.css của bạn */
-#hiddenSound {
-    display: none; /* Ẩn hoàn toàn khỏi giao diện */
-    visibility: hidden; /* Đảm bảo không nhìn thấy */
-    height: 0;
-    width: 0;
-    opacity: 0;
+/* ------------------------------------------- */
+/* 1. THIẾT LẬP THANH CHỨA CHUNG (UL) */
+/* ------------------------------------------- */
+.navbar {
+  list-style-type: none; 
+  margin: 0;
+  padding: 0;
+  background-color: #333; 
+  display: flex; /* Bật chế độ nằm ngang */
+  width: 100%;
+  
+  /* ---------------------------------------------------- */
+  /* ✅ THAY ĐỔI QUAN TRỌNG: ĐẨY TOÀN BỘ MENU SANG PHẢI */
+  /* ---------------------------------------------------- */
+  justify-content: flex-end; /* Đẩy tất cả các mục (li) sang cuối container (bên phải) */
+}
+
+/* ------------------------------------------- */
+/* 2. THIẾT LẬP TỪNG Ô (LI) */
+/* ------------------------------------------- */
+.navba { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar li, KHÔNG PHẢI .navbar */
+  /* BỎ 'flex: 1;' NẾU BẠN MUỐN CÁC MỤC GOM LẠI BÊN PHẢI */
+  /* Nếu dùng flex: 1; thì menu sẽ chiếm full width, và justify-content sẽ không có tác dụng đẩy sang phải */
+  
+  border-right: 1px solid #55555500; 
+}
+
+/* Xóa đường kẻ ở ô cuối cùng */
+.navbar { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar li:last-child */
+  border-right: none;
+}
+
+/* ------------------------------------------- */
+/* 3. THIẾT LẬP NÚT BẤM (A) & ICON */
+/* ------------------------------------------- */
+.navbar  { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar a */
+  display: flex; 
+  flex-direction: column;
+  align-items: center; 
+  justify-content: center; 
+  
+  color: white; 
+  text-decoration: none;
+  padding: 8px 15px; /* Thêm padding ngang để icon không dính vào nhau */
+  font-family: Arial, sans-serif;
+  font-size: 10px; 
+  font-weight: bold;
+}
+
+/* Cài đặt chung cho tất cả các icon */
+.material{
+  font-size: 24px; 
+  margin-bottom: 2px; 
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24
+}
+
+/* ------------------------------------------- */
+/* 4. HIỆU ỨNG DI CHUỘT (HOVER) */
+/* ------------------------------------------- */
+.navbar { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar a:hover */
+  background-color: #FFFFFF00; /* Đổi màu nền (bạn đã đặt trong suốt, tôi đổi lại màu đen) */
+  color: #FF9800; /* Đổi màu Icon/chữ khi tương tác (đã sửa mã màu) */
+  /* Ví dụ: Nếu bạn có một thẻ chứa bên ngoài */
+.header{
+    width: 100%;
+    /* ... */
+}
+
 }
