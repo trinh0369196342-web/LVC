@@ -74,7 +74,7 @@ function setupCustomerEventListeners() {
         });
     }
     
-    // Form đơn hàng
+    // Form đơn hàng - THÊM SỰ KIỆN CHO TÍNH GIÁ
     const orderType = document.getElementById('order-type');
     const createOrder = document.getElementById('create-order');
     const resetForm = document.getElementById('reset-form');
@@ -94,7 +94,10 @@ function setupCustomerEventListeners() {
         resetForm.addEventListener('click', resetOrderForm);
     }
     if (tableCount) {
-        tableCount.addEventListener('change', generateTableInputs);
+        tableCount.addEventListener('change', () => {
+            generateTableInputs();
+            calculateTotalPrice();
+        });
     }
     if (pageCount) {
         pageCount.addEventListener('change', calculateTotalPrice);
@@ -156,6 +159,10 @@ function updatePriceDisplay() {
                     <div class="price-item">
                         <span class="price-label">Trang thêm:</span>
                         <span class="price-value">${formatCurrency(printPrices.extra_page)}/trang</span>
+                    </div>
+                    <div class="price-item">
+                        <span class="price-label">Phí mỗi bảng:</span>
+                        <span class="price-value">${formatCurrency(500)}/bảng</span>
                     </div>
                 </div>
             </div>
@@ -364,6 +371,7 @@ function createOrder() {
     let fileData = null;
     let tables = [];
     
+    // Kiểm tra dữ liệu đầu vào
     if (orderType === 'print') {
         const fileInput = document.getElementById('file-upload');
         if (!fileInput.files[0]) {
@@ -378,7 +386,7 @@ function createOrder() {
         };
     } else {
         const textContent = document.getElementById('text-content');
-        if (!textContent || !textContent.value.trim()) {
+        if (!textContent.value.trim()) {
             showMessage('Vui lòng nhập nội dung cần in');
             return;
         }
@@ -391,31 +399,23 @@ function createOrder() {
             
             for (let i = 0; i < tableCount; i++) {
                 if (tableTitles[i] && tableContents[i]) {
-                    tables.push({
-                        title: tableTitles[i].value || `Bảng ${i + 1}`,
-                        content: tableContents[i].value || 'Nội dung bảng'
-                    });
+                    const title = tableTitles[i].value.trim();
+                    const tableContent = tableContents[i].value.trim();
+                    
+                    if (title || tableContent) {
+                        tables.push({
+                            title: title || `Bảng ${i + 1}`,
+                            content: tableContent || 'Nội dung trống'
+                        });
+                    }
                 }
             }
         }
     }
     
     // Tính giá
-    let totalPrice = 0;
-    if (orderType === 'text') {
-        totalPrice = printPrices.text + (pageCount - 1) * printPrices.extra_page;
-        console.log(`Tính giá in chữ: ${printPrices.text} + (${pageCount-1} * ${printPrices.extra_page}) = ${totalPrice}`);
-    } else if (orderType === 'print') {
-        totalPrice = printPrices.print + (pageCount - 1) * printPrices.extra_page;
-        console.log(`Tính giá in ấn: ${printPrices.print} + (${pageCount-1} * ${printPrices.extra_page}) = ${totalPrice}`);
-    }
-    
-    // Thêm phí cho bảng nếu có
-    if (tableCount > 0) {
-        const tableFee = tableCount * 500; // 500đ mỗi bảng
-        totalPrice += tableFee;
-        console.log(`Thêm phí ${tableCount} bảng: +${tableFee} = ${totalPrice}`);
-    }
+    let totalPrice = calculateOrderPrice(orderType, pageCount, tableCount);
+    console.log(`Tổng tiền: ${formatCurrency(totalPrice)}`);
     
     const newOrder = {
         id: generateOrderId(),
@@ -438,6 +438,7 @@ function createOrder() {
     
     console.log('Đơn hàng mới:', newOrder);
     
+    // Lưu đơn hàng
     orders.push(newOrder);
     localStorage.setItem('customerOrders', JSON.stringify(orders));
     
@@ -447,12 +448,24 @@ function createOrder() {
     
     showMessage(`✅ Tạo đơn hàng thành công! Tổng tiền: ${formatCurrency(totalPrice)}`);
     resetOrderForm();
+}
+
+// Hàm tính giá đơn hàng
+function calculateOrderPrice(orderType, pageCount, tableCount) {
+    let price = 0;
     
-    // Tự động chuyển đến trang đơn hàng
-    setTimeout(() => {
-        showSection('orders-section');
-        loadOrders();
-    }, 1000);
+    if (orderType === 'text') {
+        price = printPrices.text + (pageCount - 1) * printPrices.extra_page;
+    } else if (orderType === 'print') {
+        price = printPrices.print + (pageCount - 1) * printPrices.extra_page;
+    }
+    
+    // Thêm phí cho bảng nếu có
+    if (tableCount > 0) {
+        price += tableCount * 500; // 500đ mỗi bảng
+    }
+    
+    return price;
 }
 
 function resetOrderForm() {
@@ -478,19 +491,7 @@ function calculateTotalPrice() {
     const pages = parseInt(pageCount.value) || 1;
     const tables = parseInt(tableCount ? tableCount.value : 0) || 0;
     
-    let price = 0;
-    
-    // Tính giá cơ bản theo loại và số trang
-    if (type === 'text') {
-        price = printPrices.text + (pages - 1) * printPrices.extra_page;
-    } else if (type === 'print') {
-        price = printPrices.print + (pages - 1) * printPrices.extra_page;
-    }
-    
-    // Thêm phí cho bảng nếu có
-    if (tables > 0) {
-        price += tables * 500; // 500đ mỗi bảng
-    }
+    const price = calculateOrderPrice(type, pages, tables);
     
     console.log(`Tính giá tự động: ${formatCurrency(price)} (${pages} trang, ${tables} bảng)`);
     totalPrice.textContent = formatCurrency(price);
@@ -540,6 +541,17 @@ function loadOrders() {
             `;
         }
         
+        // Hiển thị thông tin bảng nếu có
+        let tablesInfo = '';
+        if (order.tables && order.tables.length > 0) {
+            tablesInfo = order.tables.map((table, index) => `
+                <div class="table-info">
+                    <p><strong>Bảng ${index + 1}:</strong> ${table.title}</p>
+                    <p><em>${table.content}</em></p>
+                </div>
+            `).join('');
+        }
+        
         return `
             <div class="order-item">
                 <div class="order-header">
@@ -556,6 +568,7 @@ function loadOrders() {
                     <p><strong>Độ đậm:</strong> ${getFontWeightText(order.fontWeight)}</p>
                     <p><strong>Hướng in:</strong> ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}</p>
                     <p><strong>Ngày tạo:</strong> ${formatDate(order.createdAt)}</p>
+                    ${tablesInfo}
                 </div>
                 ${paymentSection}
                 <div class="order-actions">
@@ -625,7 +638,7 @@ function remakeOrder(orderId) {
         }
         
         generateTableInputs();
-        calculateTotalPrice(); // Tính lại giá
+        calculateTotalPrice();
         showMessage('Thông tin đơn hàng đã được điền sẵn. Vui lòng chỉnh sửa và tạo lại.');
     }
 }
@@ -1111,17 +1124,7 @@ function calculateAutoPrice(orderId) {
     const order = adminOrders.find(order => order.id === orderId);
     if (!order) return;
     
-    let calculatedPrice = 0;
-    if (order.type === 'text') {
-        calculatedPrice = printPrices.text + (order.pageCount - 1) * printPrices.extra_page;
-    } else if (order.type === 'print') {
-        calculatedPrice = printPrices.print + (order.pageCount - 1) * printPrices.extra_page;
-    }
-    
-    // Thêm phí cho bảng
-    if (order.tableCount > 0) {
-        calculatedPrice += order.tableCount * 500;
-    }
+    const calculatedPrice = calculateOrderPrice(order.type, order.pageCount, order.tableCount);
     
     document.getElementById('adjust-price').value = calculatedPrice;
     showMessage(`Giá tự động: ${formatCurrency(calculatedPrice)}`);
@@ -1343,7 +1346,7 @@ function deleteUser(userId) {
             modal.style.display = 'none';
         }
         
-        showMessage('Đã xoá tài khoản');
+        showMessage('✅ Đã xoá tài khoản');
         loadUserStatistics();
     }
 }
