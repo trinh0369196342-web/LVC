@@ -1501,3 +1501,29 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN');
 }
+// Thêm vào file js của bạn
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    const sound = document.getElementById("hiddenSound");
+
+    // Hàm xử lý việc phát âm thanh
+    function playHiddenSound() {
+        sound.play().then(() => {
+            // Âm thanh bắt đầu phát thành công
+            console.log("Âm thanh đang chạy ẩn!");
+        }).catch(error => {
+            // Nếu vẫn bị lỗi thì in ra console
+            console.error("Không thể phát âm thanh:", error);
+        });
+        
+        // Quan trọng: Sau khi click lần đầu thì gỡ bỏ sự kiện này
+        // để tránh mỗi lần click lại phát lại từ đầu.
+        document.removeEventListener('click', playHiddenSound);
+        document.removeEventListener('touchstart', playHiddenSound);
+    }
+
+    // Lắng nghe sự kiện click chuột (trên máy tính)
+    document.addEventListener('click', playHiddenSound, { once: true });
+    // Lắng nghe sự kiện chạm tay (trên điện thoại)
+    document.addEventListener('touchstart', playHiddenSound, { once: true });
+});

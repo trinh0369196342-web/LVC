@@ -521,3 +521,11 @@ footer a:hover {
     gap: 0.5rem;
   }
 }
+/* Thêm vào file style.css của bạn */
+#hiddenSound {
+    display: none; /* Ẩn hoàn toàn khỏi giao diện */
+    visibility: hidden; /* Đảm bảo không nhìn thấy */
+    height: 0;
+    width: 0;
+    opacity: 0;
+}
