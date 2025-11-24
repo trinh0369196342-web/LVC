@@ -14,16 +14,19 @@ body {
 
 /* Header */
 header {
-  background-color: #2c3e50;
+  background-color: #2C3E5000;
   color: white;
   padding: 1rem 0;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-header h1 {
-  text-align: center;
+ h1 {
+  background: #0025E100;
+  color: #1A2D3CD9;
   margin-bottom: 1rem;
-  font-size: 1.8rem;
+  font-size: 14px;
+font-size: 1.5rem;
+
 }
 
 /* Navigation */
@@ -149,7 +152,6 @@ button.danger:hover {
 .order-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   margin-bottom: 0.5rem;
 }
 
@@ -521,76 +523,114 @@ footer a:hover {
     gap: 0.5rem;
   }
 }
-/* ------------------------------------------- */
-/* 1. THIẾT LẬP THANH CHỨA CHUNG (UL) */
-/* ------------------------------------------- */
+/* ================================================= */
+/* CẤU HÌNH NAVBAR CỐ ĐỊNH DƯỚI CÙNG */
+/* ================================================= */
 .navbar {
+  background-color: #2C3E50;
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  
+  /* CỐ ĐỊNH HOÀN TOÀN Ở DƯỚI CÙNG */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+  
+  /* Đảm bảo không di chuyển */
+  flex-direction: row;
+}
+
+/* ================================================= */
+/* MENU ĐIỀU HƯỚNG NGANG */
+/* ================================================= */
+.navbar nav {
+  display: flex;
+}
+
+.navbar ul {
+  display: flex;
+  gap: 15px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar a {
+  color: white;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.navbar a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ================================================= */
+/* ĐẢM BẢO KHÔNG ẢNH HƯỞNG NỘI DUNG KHÁC */
+/* ================================================= */
+body {
+  margin: 0;
+  padding-bottom: 60px; /* Tránh nội dung bị che bởi navbar */
+}
+.n {
   list-style-type: none; 
   margin: 0;
   padding: 0;
-  background-color: #333; 
-  display: flex; /* Bật chế độ nằm ngang */
-  width: 100%;
-  
-  /* ---------------------------------------------------- */
-  /* ✅ THAY ĐỔI QUAN TRỌNG: ĐẨY TOÀN BỘ MENU SANG PHẢI */
-  /* ---------------------------------------------------- */
-  justify-content: flex-end; /* Đẩy tất cả các mục (li) sang cuối container (bên phải) */
+  background-color: #00000000; /* Nền trong suốt */
+  display: flex; /* Nằm ngang */
+  width: flex; /* Quan trọng: Cho phép chiều rộng co lại theo nội dung */
 }
 
-/* ------------------------------------------- */
+/* ================================================= */
 /* 2. THIẾT LẬP TỪNG Ô (LI) */
-/* ------------------------------------------- */
-.navba { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar li, KHÔNG PHẢI .navbar */
-  /* BỎ 'flex: 1;' NẾU BẠN MUỐN CÁC MỤC GOM LẠI BÊN PHẢI */
-  /* Nếu dùng flex: 1; thì menu sẽ chiếm full width, và justify-content sẽ không có tác dụng đẩy sang phải */
-  
-  border-right: 1px solid #55555500; 
+/* ================================================= */
+.n li { /* Đã đổi từ .navbar li */
+  /* Tạo khoảng cách giữa các icon */
+  margin-left: auto; 
 }
 
-/* Xóa đường kẻ ở ô cuối cùng */
-.navbar { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar li:last-child */
-  border-right: none;
-}
-
-/* ------------------------------------------- */
+/* ================================================= */
 /* 3. THIẾT LẬP NÚT BẤM (A) & ICON */
-/* ------------------------------------------- */
-.navbar  { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar a */
+/* ================================================= */
+.n a { /* Đã đổi từ .navbar a */
   display: flex; 
-  flex-direction: column;
   align-items: center; 
   justify-content: center; 
   
-  color: white; 
+  color: #ffffff; 
   text-decoration: none;
-  padding: 8px 15px; /* Thêm padding ngang để icon không dính vào nhau */
-  font-family: Arial, sans-serif;
-  font-size: 10px; 
-  font-weight: bold;
+  padding: 9px 10px; 
 }
 
 /* Cài đặt chung cho tất cả các icon */
-.material{
-  font-size: 24px; 
-  margin-bottom: 2px; 
+.material-symbols-outlined { 
+  font-size: 14px; 
   font-variation-settings:
     'FILL' 0,
     'wght' 400,
     'GRAD' 0,
-    'opsz' 24
+    'opsz' 24;
 }
 
-/* ------------------------------------------- */
+/* ================================================= */
 /* 4. HIỆU ỨNG DI CHUỘT (HOVER) */
-/* ------------------------------------------- */
-.navbar { /* CÚ PHÁP ĐÚNG PHẢI LÀ .navbar a:hover */
-  background-color: #FFFFFF00; /* Đổi màu nền (bạn đã đặt trong suốt, tôi đổi lại màu đen) */
-  color: #FF9800; /* Đổi màu Icon/chữ khi tương tác (đã sửa mã màu) */
-  /* Ví dụ: Nếu bạn có một thẻ chứa bên ngoài */
-.header{
-    width: 100%;
-    /* ... */
+/* ================================================= */
+.n a:hover { /* Đã đổi từ .navbar a:hover */
+  color: #FCFCFC; /* Màu cam khi tương tác */
 }
 
+/* ------------------------------------------------- */
+/* LƯU Ý BỔ SUNG: KHÔNG THUỘC NAVBAR NHƯNG CẦN THIẾT */
+/* ------------------------------------------------- */
+/* Thêm padding cho main để nội dung không bị header cố định che mất */
+main {
+  padding-top: 80px; 
 }
