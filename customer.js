@@ -26,7 +26,81 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Đang ở trang KHÁCH HÀNG');
         initializeCustomerPage();
     }
+    
+    // Thêm listener để đồng bộ giữa các tab
+    setupStorageSync();
 });
+
+// ========== ĐỒNG BỘ GIỮA CÁC TAB ==========
+function setupStorageSync() {
+    window.addEventListener('storage', function(e) {
+        console.log('Storage changed:', e.key);
+        
+        if (e.key === 'currentUser') {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                console.log('Đồng bộ currentUser:', currentUser);
+                
+                // Kiểm tra trang hiện tại và chuyển hướng nếu cần
+                const isAdminPage = document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN');
+                
+                if (currentUser.role === 'admin' && !isAdminPage) {
+                    window.location.href = 'admin.html';
+                    return;
+                } else if (currentUser.role !== 'admin' && isAdminPage) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Cập nhật giao diện
+                if (isAdminPage) {
+                    updateAdminAccountDisplay();
+                } else {
+                    updateAccountDisplay();
+                    updateAdminLinkVisibility();
+                }
+            } else {
+                currentUser = null;
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    updateAdminAccountDisplay();
+                } else {
+                    updateAccountDisplay();
+                    updateAdminLinkVisibility();
+                }
+            }
+        }
+        
+        // Đồng bộ dữ liệu đơn hàng
+        if (e.key === 'customerOrders' || e.key === 'adminOrders') {
+            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
+            adminOrders = JSON.parse(localStorage.getItem('adminOrders')) || [];
+            
+            const currentSection = document.querySelector('.section.active');
+            if (currentSection?.id === 'orders-section') {
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    loadAdminOrders();
+                } else {
+                    loadOrders();
+                }
+            }
+        }
+        
+        // Đồng bộ chat
+        if (e.key === 'supportChats') {
+            supportChats = JSON.parse(localStorage.getItem('supportChats')) || [];
+            
+            const currentSection = document.querySelector('.section.active');
+            if (currentSection?.id === 'support-section') {
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    loadAdminSupportChats();
+                } else {
+                    loadSupportChat();
+                }
+            }
+        }
+    });
+}
 
 // ========== TRANG KHÁCH HÀNG ==========
 function initializeCustomerPage() {
@@ -120,15 +194,11 @@ function setupCustomerEventListeners() {
     const showRegisterBtn = document.getElementById('show-register');
     const showLoginBtn = document.getElementById('show-login');
     
-    if (loginBtn) loginBtn.addEventListener('click', (e) => { e.preventDefault(); login(); });
+    if (loginBtn) loginBtn.addEventListener('click', (e) => { e.preventDefault(); handleLogin(); });
     if (registerBtn) registerBtn.addEventListener('click', (e) => { e.preventDefault(); register(); });
     if (logoutBtn) logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
     if (showRegisterBtn) showRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); showRegisterForm(); });
     if (showLoginBtn) showLoginBtn.addEventListener('click', (e) => { e.preventDefault(); showLoginForm(); });
-    
-    // Hỗ trợ
-    const sendSupport = document.getElementById('send-support');
-    if (sendSupport) sendSupport.addEventListener('click', (e) => { e.preventDefault(); sendSupportMessage(); });
     
     // Tìm kiếm
     const searchInput = document.getElementById('search-orders');
@@ -240,7 +310,7 @@ function setupAdminEventListeners() {
     const adminLoginBtn = document.getElementById('admin-login-btn');
     const adminLogoutBtn = document.getElementById('admin-logout-btn');
     
-    if (adminLoginBtn) adminLoginBtn.addEventListener('click', (e) => { e.preventDefault(); adminLogin(); });
+    if (adminLoginBtn) adminLoginBtn.addEventListener('click', (e) => { e.preventDefault(); handleAdminLogin(); });
     if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', (e) => { e.preventDefault(); adminLogout(); });
     
     // Tìm kiếm admin
@@ -353,7 +423,9 @@ function checkLoginStatus() {
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
         
+        // Nếu là admin đang ở trang khách hàng, chuyển hướng
         if (currentUser.role === 'admin') {
+            console.log('Phát hiện admin ở trang khách hàng, chuyển hướng...');
             window.location.href = 'admin.html';
             return;
         }
@@ -1037,7 +1109,95 @@ function closeAdminChat() {
     }
 }
 
-// ========== CÁC HÀM ĐĂNG KÝ/ĐĂNG NHẬP ==========
+// ========== CÁC HÀM ĐĂNG KÝ/ĐĂNG NHẬP ĐÃ SỬA ==========
+function handleLogin() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    if (!email || !password) {
+        showMessage('Vui lòng điền đầy đủ thông tin');
+        return;
+    }
+    
+    // Kiểm tra admin mặc định
+    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
+        const adminUser = {
+            id: 'admin',
+            name: 'Quản trị viên',
+            email: email,
+            role: 'admin'
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(adminUser));
+        showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
+        
+        // Đảm bảo chuyển hướng ngay lập tức
+        setTimeout(() => {
+            window.location.href = 'admin.html';
+        }, 1000);
+        return;
+    }
+    
+    const user = users.find(u => u.email === email && u.password === password && u.status === 'active');
+    
+    if (user) {
+        if (user.role === 'admin') {
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
+            setTimeout(() => {
+                window.location.href = 'admin.html';
+            }, 1000);
+            return;
+        }
+        
+        currentUser = user;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateAccountDisplay();
+        showMessage('Đăng nhập thành công!');
+        updateAdminLinkVisibility();
+    } else {
+        showMessage('Email hoặc mật khẩu không đúng');
+    }
+}
+
+function handleAdminLogin() {
+    const email = document.getElementById('admin-email').value;
+    const password = document.getElementById('admin-password').value;
+    
+    if (!email || !password) {
+        showMessage('Vui lòng điền đầy đủ thông tin');
+        return;
+    }
+    
+    // Kiểm tra admin mặc định
+    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
+        const adminUser = {
+            id: 'admin',
+            name: 'Quản trị viên',
+            email: email,
+            role: 'admin'
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(adminUser));
+        updateAdminAccountDisplay();
+        showMessage('Đăng nhập admin thành công!');
+        updateCustomerLinkVisibility();
+        return;
+    }
+    
+    const user = users.find(u => u.email === email && u.password === password && u.role === 'admin' && u.status === 'active');
+    
+    if (user) {
+        currentUser = user;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateAdminAccountDisplay();
+        showMessage('Đăng nhập admin thành công!');
+        updateCustomerLinkVisibility();
+    } else {
+        showMessage('Thông tin đăng nhập không đúng hoặc không có quyền admin');
+    }
+}
+
 function register() {
     const name = document.getElementById('register-name').value;
     const email = document.getElementById('register-email').value;
@@ -1076,52 +1236,6 @@ function register() {
     
     showMessage('Đăng ký thành công! Vui lòng đăng nhập.');
     showLoginForm();
-}
-
-function login() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    
-    if (!email || !password) {
-        showMessage('Vui lòng điền đầy đủ thông tin');
-        return;
-    }
-    
-    // Kiểm tra admin mặc định
-    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
-        currentUser = {
-            id: 'admin',
-            name: 'Quản trị viên',
-            email: email,
-            role: 'admin'
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
-        setTimeout(() => {
-            window.location.href = 'admin.html';
-        }, 1500);
-        return;
-    }
-    
-    const user = users.find(u => u.email === email && u.password === password && u.status === 'active');
-    
-    if (user) {
-        if (user.role === 'admin') {
-            showMessage('Đây là tài khoản admin. Đang chuyển hướng...');
-            setTimeout(() => {
-                window.location.href = 'admin.html';
-            }, 1500);
-            return;
-        }
-        
-        currentUser = user;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateAccountDisplay();
-        showMessage('Đăng nhập thành công!');
-        updateAdminLinkVisibility();
-    } else {
-        showMessage('Email hoặc mật khẩu không đúng');
-    }
 }
 
 function logout() {
@@ -1175,6 +1289,14 @@ function checkAdminLoginStatus() {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
+        
+        // Nếu không phải admin đang ở trang admin, chuyển hướng
+        if (currentUser.role !== 'admin') {
+            console.log('Phát hiện người dùng thường ở trang admin, chuyển hướng...');
+            window.location.href = 'index.html';
+            return;
+        }
+        
         updateAdminAccountDisplay();
     }
 }
@@ -1183,43 +1305,6 @@ function updateCustomerLinkVisibility() {
     const customerLink = document.querySelector('footer a[href="index.html"]');
     if (customerLink && currentUser) {
         customerLink.style.display = 'none';
-    }
-}
-
-function adminLogin() {
-    const email = document.getElementById('admin-email').value;
-    const password = document.getElementById('admin-password').value;
-    
-    if (!email || !password) {
-        showMessage('Vui lòng điền đầy đủ thông tin');
-        return;
-    }
-    
-    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
-        currentUser = {
-            id: 'admin',
-            name: 'Quản trị viên',
-            email: email,
-            role: 'admin'
-        };
-        
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateAdminAccountDisplay();
-        showMessage('Đăng nhập admin thành công!');
-        updateCustomerLinkVisibility();
-        return;
-    }
-    
-    const user = users.find(u => u.email === email && u.password === password && u.role === 'admin' && u.status === 'active');
-    
-    if (user) {
-        currentUser = user;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateAdminAccountDisplay();
-        showMessage('Đăng nhập admin thành công!');
-        updateCustomerLinkVisibility();
-    } else {
-        showMessage('Thông tin đăng nhập không đúng hoặc không có quyền admin');
     }
 }
 
