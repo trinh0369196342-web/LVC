@@ -138,9 +138,6 @@
     <!-- Section THÔNG TIN ĐƠN HÀNG -->
     <section id="orders-section" class="section">
       <h2>Thông Tin Đơn Hàng</h2>
-      <div class="search-box">
-        <input type="text" id="search-orders" placeholder="Tìm kiếm đơn hàng...">
-      </div>
       <div id="orders-list">
         <!-- Danh sách đơn hàng sẽ được hiển thị ở đây -->
       </div>
@@ -149,8 +146,15 @@
     <!-- Section HỖ TRỢ -->
     <section id="support-section" class="section">
       <h2>Hỗ Trợ Khách Hàng</h2>
-      <div id="support-chat">
-        <!-- Nội dung chat sẽ được hiển thị ở đây -->
+      <div class="form-group">
+        <label for="support-message">Tin nhắn hỗ trợ:</label>
+        <textarea id="support-message" rows="5" placeholder="Nhập nội dung cần hỗ trợ..."></textarea>
+      </div>
+      <button type="button" id="send-support">Gửi Yêu Cầu Hỗ Trợ</button>
+      
+      <div id="support-history">
+        <h3>Lịch sử hỗ trợ</h3>
+        <!-- Lịch sử hỗ trợ sẽ được hiển thị ở đây -->
       </div>
     </section>
 
@@ -210,16 +214,6 @@
       <div class="modal-content">
         <span class="close">&times;</span>
         <p id="modal-message"></p>
-      </div>
-    </div>
-
-    <!-- Modal tùy chọn sao chép -->
-    <div id="copy-options-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <div id="copy-options">
-          <!-- Các tùy chọn sao chép sẽ được hiển thị ở đây -->
-        </div>
       </div>
     </div>
   </main>

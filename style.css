@@ -572,7 +572,13 @@ footer a:hover {
 .navbar a:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
-
+•copy-options {
+display: flex; flex-direction: column;
+gap: 10px; margin: 15px 0;
+}
+•copy-options label { display: flex; align-items: center;
+gap: 8px;
+}
 /* ================================================= */
 /* ĐẢM BẢO KHÔNG ẢNH HƯỞNG NỘI DUNG KHÁC */
 /* ================================================= */
