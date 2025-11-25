@@ -1,219 +1,15 @@
-// ==========================================================
-// THAY THẾ localStorage BẰNG KẾT NỐI SUPABASE & REALTIME SYNC
-// ==========================================================
-
-// Biến toàn cục (Đã thay thế localStorage bằng dữ liệu được tải từ Supabase)
-// *** LƯU Ý: Đã loại bỏ adminOrders và supportMessages vì dữ liệu sẽ được lấy từ Orders và SupportChats.
+// Biến toàn cục
 let currentUser = null;
-let orders = [];
-let users = [];
-let printPrices = {
+let orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
+let adminOrders = JSON.parse(localStorage.getItem('adminOrders')) || [];
+let supportMessages = JSON.parse(localStorage.getItem('supportMessages')) || [];
+let users = JSON.parse(localStorage.getItem('users')) || [];
+let printPrices = JSON.parse(localStorage.getItem('printPrices')) || {
     'text': 1000,
     'print': 2000,
     'extra_page': 500
-}; // Giữ giá trị mặc định, sẽ được cập nhật khi fetch từ DB
-let supportChats = [];
-
-// ==========================================================
-// HÀM TẢI DỮ LIỆU TỪ SUPABASE
-// ==========================================================
-
-// Hàm tải dữ liệu Người dùng (users)
-async function loadUsersFromSupabase() {
-    const { data, error } = await supabase.from('users').select('*');
-    if (error) {
-        console.error("Lỗi tải người dùng:", error);
-    } else {
-        // Cập nhật biến toàn cục users
-        users = data.map(u => ({
-            id: u.user_id,
-            name: u.name,
-            email: u.email,
-            phone: u.phone,
-            password: u.password, // Mật khẩu chưa băm
-            role: u.role,
-            status: u.status,
-            createdAt: u.created_at
-        }));
-        
-        // Cập nhật trạng thái người dùng hiện tại
-        const storedUser = localStorage.getItem('currentUser');
-        if (storedUser) {
-            const tempUser = JSON.parse(storedUser);
-            // Cố gắng tìm lại user trong DB (để lấy role/status mới nhất)
-            currentUser = users.find(u => u.id === tempUser.id) || null;
-            if (currentUser) {
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            } else {
-                 // Nếu tài khoản bị xóa/khóa
-                localStorage.removeItem('currentUser');
-                currentUser = null;
-            }
-        }
-        
-        // Cập nhật giao diện nếu đang ở trang Tài khoản hoặc Thống kê
-        const isAdminPage = document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN');
-        if (isAdminPage) {
-            updateAdminAccountDisplay();
-            const currentSection = document.querySelector('.section.active');
-            if (currentSection?.id === 'statistics-section') {
-                loadUserStatistics();
-            }
-        } else {
-            updateAccountDisplay();
-        }
-    }
-}
-
-// Hàm tải dữ liệu Giá (printPrices)
-async function loadPrintPricesFromSupabase() {
-    const { data, error } = await supabase.from('print_prices').select('*').limit(1);
-    if (error) {
-        console.error("Lỗi tải giá:", error);
-    } else if (data && data.length > 0) {
-        // printPrices là object, không phải array
-        printPrices = {
-            'text': data[0].text_price,
-            'print': data[0].print_price,
-            'extra_page': data[0].extra_page
-        };
-        // Cập nhật giao diện giá
-        updatePriceDisplay();
-        calculateTotalPrice();
-    }
-}
-
-// Hàm tải dữ liệu Đơn hàng (orders)
-async function loadOrdersFromSupabase() {
-    // Lấy tất cả đơn hàng, sắp xếp mới nhất lên đầu
-    const { data, error } = await supabase
-        .from('orders')
-        .select(`
-            order_id, user_id, user_name, order_type, total_price, status, payment_status, payment_image, created_at,
-            order_data
-        `)
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error("Lỗi tải đơn hàng:", error);
-    } else {
-        // Gán dữ liệu mạng vào biến toàn cục của bạn
-        orders = data.map(item => {
-            // Giải nén cột JSONB order_data ra các thuộc tính riêng biệt
-            const orderData = item.order_data || {};
-            return {
-                id: item.order_id, 
-                userId: item.user_id,
-                userName: item.user_name,
-                type: item.order_type,
-                totalPrice: item.total_price,
-                status: item.status,
-                paymentStatus: item.payment_status,
-                paymentImage: item.payment_image,
-                createdAt: item.created_at,
-                // Lấy các trường chi tiết từ order_data
-                content: orderData.content || 'N/A',
-                fontSize: orderData.fontSize || '12',
-                fontWeight: orderData.fontWeight || 'normal',
-                orientation: orderData.orientation || 'portrait',
-                pageCount: orderData.pageCount || 1,
-                tableCount: orderData.tableCount || 0,
-                tables: orderData.tables || [],
-                fileData: orderData.fileData || null,
-            };
-        });
-        
-        // Cập nhật giao diện đơn hàng nếu đang ở trang Đơn hàng
-        const currentSection = document.querySelector('.section.active');
-        if (currentSection?.id === 'orders-section') {
-            const isAdminPage = document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN');
-            if (isAdminPage) {
-                loadAdminOrders(); 
-            } else {
-                loadOrders(); 
-            }
-        }
-    }
-}
-
-// Hàm tải dữ liệu Chat (supportChats)
-async function loadChatsFromSupabase() {
-    const { data, error } = await supabase.from('support_chats')
-        .select('*')
-        .order('created_at', { ascending: false });
-        
-    if (error) {
-        console.error("Lỗi tải chat:", error);
-    } else {
-        supportChats = data.map(item => ({
-            id: item.chat_id,
-            userId: item.user_id,
-            userName: item.user_name,
-            messages: item.messages || [], // Cột JSONB
-            status: item.status,
-            createdAt: item.created_at
-        }));
-        
-        // Cập nhật giao diện chat nếu đang mở
-        const currentSection = document.querySelector('.section.active');
-        if (currentSection?.id === 'support-section') {
-            const isAdminPage = document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN');
-            if (isAdminPage) {
-                loadAdminSupportChats();
-            } else {
-                loadSupportChat();
-            }
-        }
-    }
-}
-
-// HÀM KÍCH HOẠT ĐỒNG BỘ REALTIME (Thay thế setupStorageSync)
-function startRealtimeSync() {
-    console.log('Bắt đầu đồng bộ Realtime Supabase...');
-    
-    // 1. Lắng nghe Bảng Đơn Hàng (orders)
-    supabase.channel('sync_orders')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        console.log('Realtime: Có thay đổi Đơn hàng!', payload.eventType);
-        loadOrdersFromSupabase(); 
-    })
-    .subscribe();
-
-    // 2. Lắng nghe Bảng Chat (support_chats)
-    supabase.channel('sync_chats')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'support_chats' }, (payload) => {
-        console.log('Realtime: Có thay đổi Chat!', payload.eventType);
-        loadChatsFromSupabase(); 
-    })
-    .subscribe();
-    
-    // 3. Lắng nghe Bảng Người dùng (users)
-    supabase.channel('sync_users')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        console.log('Realtime: Có thay đổi Người dùng!', payload.eventType);
-        loadUsersFromSupabase(); 
-    })
-    .subscribe();
-    
-    // 4. Lắng nghe Bảng Giá (print_prices)
-    supabase.channel('sync_prices')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'print_prices' }, (payload) => {
-        console.log('Realtime: Có thay đổi Giá!', payload.eventType);
-        loadPrintPricesFromSupabase(); 
-    })
-    .subscribe();
-    
-    // 5. Tải dữ liệu lần đầu tiên
-    loadUsersFromSupabase();
-    loadPrintPricesFromSupabase();
-    loadOrdersFromSupabase();
-    loadChatsFromSupabase();
-}
-
-
-// ==========================================================
-// KHỞI TẠO VÀ CÁC HÀM TIỆN ÍCH
-// ==========================================================
+};
+let supportChats = JSON.parse(localStorage.getItem('supportChats')) || [];
 
 // Khởi tạo trang
 document.addEventListener('DOMContentLoaded', function() {
@@ -231,12 +27,80 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeCustomerPage();
     }
     
-    // KICK HOẠT ĐỒNG BỘ SUPABASE (thay thế setupStorageSync)
-    startRealtimeSync(); 
+    // Thêm listener để đồng bộ giữa các tab
+    setupStorageSync();
 });
 
-
-// XÓA HÀM setupStorageSync CŨ (Đã bị thay thế bởi startRealtimeSync)
+// ========== ĐỒNG BỘ GIỮA CÁC TAB ==========
+function setupStorageSync() {
+    window.addEventListener('storage', function(e) {
+        console.log('Storage changed:', e.key);
+        
+        if (e.key === 'currentUser') {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                console.log('Đồng bộ currentUser:', currentUser);
+                
+                // Kiểm tra trang hiện tại và chuyển hướng nếu cần
+                const isAdminPage = document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN');
+                
+                if (currentUser.role === 'admin' && !isAdminPage) {
+                    window.location.href = 'admin.html';
+                    return;
+                } else if (currentUser.role !== 'admin' && isAdminPage) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Cập nhật giao diện
+                if (isAdminPage) {
+                    updateAdminAccountDisplay();
+                } else {
+                    updateAccountDisplay();
+                    updateAdminLinkVisibility();
+                }
+            } else {
+                currentUser = null;
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    updateAdminAccountDisplay();
+                } else {
+                    updateAccountDisplay();
+                    updateAdminLinkVisibility();
+                }
+            }
+        }
+        
+        // Đồng bộ dữ liệu đơn hàng
+        if (e.key === 'customerOrders' || e.key === 'adminOrders') {
+            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
+            adminOrders = JSON.parse(localStorage.getItem('adminOrders')) || [];
+            
+            const currentSection = document.querySelector('.section.active');
+            if (currentSection?.id === 'orders-section') {
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    loadAdminOrders();
+                } else {
+                    loadOrders();
+                }
+            }
+        }
+        
+        // Đồng bộ chat
+        if (e.key === 'supportChats') {
+            supportChats = JSON.parse(localStorage.getItem('supportChats')) || [];
+            
+            const currentSection = document.querySelector('.section.active');
+            if (currentSection?.id === 'support-section') {
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    loadAdminSupportChats();
+                } else {
+                    loadSupportChat();
+                }
+            }
+        }
+    });
+}
 
 // ========== TRANG KHÁCH HÀNG ==========
 function initializeCustomerPage() {
@@ -268,14 +132,14 @@ function setupCustomerEventListeners() {
         navOrders.addEventListener('click', (e) => {
             e.preventDefault();
             showSection('orders-section');
-            //loadOrders(); // Không cần gọi vì Realtime đã gọi (tuy nhiên để lại cho an toàn)
+            loadOrders();
         });
     }
     if (navSupport) {
         navSupport.addEventListener('click', (e) => {
             e.preventDefault();
             showSection('support-section');
-            //loadSupportChat(); // Không cần gọi vì Realtime đã gọi (tuy nhiên để lại cho an toàn)
+            loadSupportChat();
         });
     }
     if (navAccount) {
@@ -302,7 +166,7 @@ function setupCustomerEventListeners() {
     if (createOrderBtn) {
         createOrderBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            createOrder(); // Đã thêm async
+            createOrder();
         });
     }
     if (resetForm) {
@@ -330,8 +194,8 @@ function setupCustomerEventListeners() {
     const showRegisterBtn = document.getElementById('show-register');
     const showLoginBtn = document.getElementById('show-login');
     
-    if (loginBtn) loginBtn.addEventListener('click', (e) => { e.preventDefault(); handleLogin(); }); // Đã thêm async
-    if (registerBtn) registerBtn.addEventListener('click', (e) => { e.preventDefault(); register(); }); // Đã thêm async
+    if (loginBtn) loginBtn.addEventListener('click', (e) => { e.preventDefault(); handleLogin(); });
+    if (registerBtn) registerBtn.addEventListener('click', (e) => { e.preventDefault(); register(); });
     if (logoutBtn) logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
     if (showRegisterBtn) showRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); showRegisterForm(); });
     if (showLoginBtn) showLoginBtn.addEventListener('click', (e) => { e.preventDefault(); showLoginForm(); });
@@ -446,7 +310,7 @@ function setupAdminEventListeners() {
     const adminLoginBtn = document.getElementById('admin-login-btn');
     const adminLogoutBtn = document.getElementById('admin-logout-btn');
     
-    if (adminLoginBtn) adminLoginBtn.addEventListener('click', (e) => { e.preventDefault(); handleAdminLogin(); }); // Đã thêm async
+    if (adminLoginBtn) adminLoginBtn.addEventListener('click', (e) => { e.preventDefault(); handleAdminLogin(); });
     if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', (e) => { e.preventDefault(); adminLogout(); });
     
     // Tìm kiếm admin
@@ -539,8 +403,7 @@ function searchAdminOrders(searchTerm) {
         return;
     }
     
-    // Dùng biến orders toàn cục (đã được fetch)
-    const filteredOrders = orders.filter(order => 
+    const filteredOrders = adminOrders.filter(order => 
         order.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.content.toLowerCase().includes(searchTerm.toLowerCase())
@@ -600,8 +463,7 @@ function toggleOrderOptions() {
     }
 }
 
-// Hàm TẠO ĐƠN HÀNG (ĐÃ SỬA DỤNG SUPABASE)
-async function createOrder() {
+function createOrder() {
     if (!currentUser) {
         showMessage('Vui lòng đăng nhập để tạo đơn hàng');
         return;
@@ -643,7 +505,6 @@ async function createOrder() {
             size: fileInput.files[0].size,
             type: fileInput.files[0].type
         };
-        // *** LƯU Ý: Chức năng upload file thật cần được thêm bằng Supabase Storage. Hiện tại chỉ lưu tên file.
     } else {
         const textContent = document.getElementById('text-content');
         if (!textContent || !textContent.value.trim()) {
@@ -676,47 +537,40 @@ async function createOrder() {
     // Tính giá
     let totalPrice = calculateOrderPrice(orderType, pageCount, tableCount);
     
-    // 1. CHUẨN BỊ DỮ LIỆU CHÈN CHO SUPABASE
     const newOrder = {
-        order_id: generateOrderId(), // Sử dụng cột DB
-        user_id: currentUser.id,
-        user_name: currentUser.name,
-        order_type: orderType,
-        total_price: totalPrice,
+        id: generateOrderId(),
+        userId: currentUser.id,
+        userName: currentUser.name,
+        type: orderType,
+        content: content,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        orientation: orientation,
+        pageCount: pageCount,
+        tableCount: tableCount,
+        tables: tables,
+        totalPrice: totalPrice,
+        fileData: fileData,
         status: 'pending',
-        payment_status: 'pending',
-        // Dữ liệu chi tiết cho cột JSONB order_data
-        order_data: {
-            content: content,
-            fontSize: fontSize,
-            fontWeight: fontWeight,
-            orientation: orientation,
-            pageCount: pageCount,
-            tableCount: tableCount,
-            tables: tables,
-            fileData: fileData,
-        }
+        paymentStatus: 'pending',
+        paymentImage: null,
+        createdAt: new Date().toISOString()
     };
     
-    // 2. CHÈN ĐƠN HÀNG VÀO SUPABASE
-    const { error: insertError } = await supabase
-        .from('orders')
-        .insert([newOrder]);
-
-    if (insertError) {
-        console.error("Lỗi tạo đơn hàng:", insertError);
-        showMessage('❌ Lỗi tạo đơn hàng, vui lòng thử lại.');
-        return;
-    }
-
-    // Xóa code cũ lưu vào localStorage
-
+    // Lưu đơn hàng
+    orders.push(newOrder);
+    localStorage.setItem('customerOrders', JSON.stringify(orders));
+    
+    // Thêm vào danh sách admin
+    adminOrders.push(newOrder);
+    localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+    
     showMessage(`✅ Tạo đơn hàng thành công! Tổng tiền: ${formatCurrency(totalPrice)}`);
     resetOrderForm();
     
     // Tự động chuyển đến trang đơn hàng
     showSection('orders-section');
-    // Realtime Sync sẽ tự động tải lại loadOrders()
+    loadOrders();
 }
 
 // Hàm tính giá đơn hàng
@@ -777,7 +631,6 @@ function loadOrders() {
         return;
     }
     
-    // Lấy đơn hàng từ biến toàn cục (đã được Supabase load)
     const userOrders = orders.filter(order => order.userId === currentUser.id);
     displayOrders(userOrders, ordersList);
 }
@@ -869,8 +722,7 @@ function displayOrders(userOrders, ordersList) {
     }).join('');
 }
 
-// Hàm UPLOAD ẢNH THANH TOÁN (ĐÃ SỬA DỤNG SUPABASE)
-async function uploadPaymentImage(orderId) {
+function uploadPaymentImage(orderId) {
     const fileInput = document.getElementById(`payment-image-${orderId}`);
     if (!fileInput || !fileInput.files[0]) {
         showMessage('Vui lòng chọn ảnh chuyển khoản');
@@ -880,34 +732,37 @@ async function uploadPaymentImage(orderId) {
     const file = fileInput.files[0];
     const reader = new FileReader();
     
-    reader.onload = async function(e) {
+    reader.onload = function(e) {
         const imageData = e.target.result;
         
-        // 1. CẬP NHẬT TRONG SUPABASE
-        const { error: updateError } = await supabase
-            .from('orders')
-            .update({ 
-                payment_image: imageData, 
-                payment_status: 'paid' 
-            })
-            .eq('order_id', orderId);
-
-        if (updateError) {
-            console.error("Lỗi cập nhật thanh toán:", updateError);
-            showMessage('❌ Lỗi cập nhật thanh toán, vui lòng thử lại.');
-            return;
+        // Cập nhật trong orders
+        const orderIndex = orders.findIndex(order => order.id === orderId);
+        if (orderIndex !== -1) {
+            orders[orderIndex].paymentImage = imageData;
+            orders[orderIndex].paymentStatus = 'paid';
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
         }
-
+        
+        // Cập nhật trong adminOrders
+        const adminOrderIndex = adminOrders.findIndex(order => order.id === orderId);
+        if (adminOrderIndex !== -1) {
+            adminOrders[adminOrderIndex].paymentImage = imageData;
+            adminOrders[adminOrderIndex].paymentStatus = 'paid';
+            localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+        }
+        
         showMessage('✅ Đã tải lên ảnh chuyển khoản và xác nhận thanh toán');
-        // Realtime Sync sẽ tự động tải lại loadOrders()
+        loadOrders();
     };
     
     reader.readAsDataURL(file);
 }
 
 function showCopyOptions(orderId, userType) {
-    const order = orders.find(order => order.id === orderId); // Chỉ dùng biến orders
-
+    const order = userType === 'admin' 
+        ? adminOrders.find(order => order.id === orderId)
+        : orders.find(order => order.id === orderId && order.userId === currentUser.id);
+    
     if (!order) {
         showMessage('Không tìm thấy đơn hàng');
         return;
@@ -945,7 +800,9 @@ function showCopyOptions(orderId, userType) {
 }
 
 function copySelectedContent(orderId, userType) {
-    const order = orders.find(order => order.id === orderId);
+    const order = userType === 'admin' 
+        ? adminOrders.find(order => order.id === orderId)
+        : orders.find(order => order.id === orderId && order.userId === currentUser.id);
     
     if (!order) return;
     
@@ -1025,23 +882,21 @@ function fallbackCopyText(text) {
     document.body.removeChild(textArea);
 }
 
-// Hàm HỦY ĐƠN HÀNG (ĐÃ SỬA DỤNG SUPABASE)
-async function cancelOrder(orderId) {
-    // 1. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: 'cancelled' })
-        .eq('order_id', orderId)
-        .eq('user_id', currentUser.id); // Chỉ cho phép user huỷ đơn của chính mình
-
-    if (updateError) {
-        console.error("Lỗi huỷ đơn hàng:", updateError);
-        showMessage('❌ Lỗi huỷ đơn hàng, vui lòng thử lại.');
-        return;
+function cancelOrder(orderId) {
+    const orderIndex = orders.findIndex(order => order.id === orderId);
+    if (orderIndex !== -1) {
+        orders[orderIndex].status = 'cancelled';
+        localStorage.setItem('customerOrders', JSON.stringify(orders));
+        
+        const adminOrderIndex = adminOrders.findIndex(order => order.id === orderId);
+        if (adminOrderIndex !== -1) {
+            adminOrders[adminOrderIndex].status = 'cancelled';
+            localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+        }
+        
+        showMessage('Đã huỷ đơn hàng');
+        loadOrders();
     }
-
-    showMessage('Đã huỷ đơn hàng');
-    // Realtime Sync sẽ tự động tải lại loadOrders()
 }
 
 function remakeOrder(orderId) {
@@ -1067,29 +922,13 @@ function remakeOrder(orderId) {
         }
         
         generateTableInputs();
-        
-        // Thêm logic điền lại nội dung bảng
-        if (order.tables && order.tables.length > 0) {
-            setTimeout(() => { // Đợi generateTableInputs chạy xong
-                const tableTitles = document.querySelectorAll('.table-title');
-                const tableContents = document.querySelectorAll('.table-content');
-                
-                order.tables.forEach((table, index) => {
-                    if (tableTitles[index]) tableTitles[index].value = table.title;
-                    if (tableContents[index]) tableContents[index].value = table.content;
-                });
-            }, 100);
-        }
-        
         calculateTotalPrice();
         showMessage('Thông tin đơn hàng đã được điền sẵn. Vui lòng chỉnh sửa và tạo lại.');
     }
 }
 
 // ========== HỆ THỐNG CHAT HỖ TRỢ ==========
-
-// Hàm LOAD CHAT (ĐÃ SỬA DỤNG SUPABASE)
-async function loadSupportChat() {
+function loadSupportChat() {
     const supportChat = document.getElementById('support-chat');
     if (!supportChat) return;
     
@@ -1098,47 +937,19 @@ async function loadSupportChat() {
         return;
     }
     
-    // 1. Tìm chat hiện có trong biến toàn cục (đã được load từ DB)
+    // Tìm hoặc tạo chat cho user
     let chat = supportChats.find(chat => chat.userId === currentUser.id);
-    
     if (!chat) {
-        // 2. Nếu không có, tạo chat mới
-        const newChat = {
-            chat_id: generateChatId(),
-            user_id: currentUser.id,
-            user_name: currentUser.name,
+        chat = {
+            id: generateChatId(),
+            userId: currentUser.id,
+            userName: currentUser.name,
             messages: [],
             status: 'active',
+            createdAt: new Date().toISOString()
         };
-        
-        // 3. Chèn vào Supabase
-        const { data, error: insertError } = await supabase
-            .from('support_chats')
-            .insert([newChat])
-            .select(); // Lấy lại dữ liệu sau khi chèn
-            
-        if (insertError) {
-            console.error("Lỗi tạo chat mới:", insertError);
-            showMessage('❌ Lỗi tạo kênh chat, vui lòng thử lại.');
-            return;
-        }
-        
-        // Cập nhật biến cục bộ từ kết quả chèn
-        if (data && data.length > 0) {
-            // Sau khi insert, Realtime sẽ cập nhật supportChats. 
-            // Ta dùng data[0] để hiển thị ngay lập tức
-            chat = {
-                id: data[0].chat_id,
-                userId: data[0].user_id,
-                userName: data[0].user_name,
-                messages: data[0].messages,
-                status: data[0].status,
-                createdAt: data[0].created_at
-            };
-        } else {
-             showMessage('❌ Lỗi tạo kênh chat (dữ liệu rỗng).');
-             return;
-        }
+        supportChats.push(chat);
+        localStorage.setItem('supportChats', JSON.stringify(supportChats));
     }
     
     displayChat(chat, supportChat);
@@ -1172,8 +983,7 @@ function displayChat(chat, container) {
     }
 }
 
-// Hàm GỬI TIN NHẮN (ĐÃ SỬA DỤNG SUPABASE)
-async function sendChatMessage() {
+function sendChatMessage() {
     const messageInput = document.getElementById('chat-input-message');
     if (!messageInput || !messageInput.value.trim()) {
         showMessage('Vui lòng nhập tin nhắn');
@@ -1183,10 +993,7 @@ async function sendChatMessage() {
     if (!currentUser) return;
     
     const chat = supportChats.find(chat => chat.userId === currentUser.id);
-    if (!chat) {
-        showMessage('Lỗi: Không tìm thấy kênh chat.');
-        return;
-    }
+    if (!chat) return;
     
     const newMessage = {
         id: generateMessageId(),
@@ -1195,23 +1002,11 @@ async function sendChatMessage() {
         timestamp: new Date().toISOString()
     };
     
-    // 1. Thêm tin nhắn vào mảng cục bộ (cho JSONB)
-    const updatedMessages = [...chat.messages, newMessage];
-
-    // 2. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('support_chats')
-        .update({ messages: updatedMessages }) // messages là cột JSONB
-        .eq('chat_id', chat.id);
-
-    if (updateError) {
-        console.error("Lỗi gửi tin nhắn:", updateError);
-        showMessage('❌ Lỗi gửi tin nhắn, vui lòng thử lại.');
-        return;
-    }
+    chat.messages.push(newMessage);
+    localStorage.setItem('supportChats', JSON.stringify(supportChats));
     
     messageInput.value = '';
-    // Realtime Sync sẽ tự động tải lại loadSupportChat()
+    loadSupportChat();
 }
 
 function loadAdminSupportChats() {
@@ -1283,8 +1078,7 @@ function openAdminChat(chatId) {
     }
 }
 
-// Hàm GỬI TIN NHẮN ADMIN (ĐÃ SỬA DỤNG SUPABASE)
-async function sendAdminChatMessage(chatId) {
+function sendAdminChatMessage(chatId) {
     const messageInput = document.getElementById('admin-chat-input');
     if (!messageInput || !messageInput.value.trim()) {
         showMessage('Vui lòng nhập tin nhắn');
@@ -1292,10 +1086,7 @@ async function sendAdminChatMessage(chatId) {
     }
     
     const chat = supportChats.find(chat => chat.id === chatId);
-    if (!chat) {
-        showMessage('Lỗi: Không tìm thấy kênh chat.');
-        return;
-    }
+    if (!chat) return;
     
     const newMessage = {
         id: generateMessageId(),
@@ -1304,23 +1095,11 @@ async function sendAdminChatMessage(chatId) {
         timestamp: new Date().toISOString()
     };
     
-    // 1. Thêm tin nhắn vào mảng cục bộ (cho JSONB)
-    const updatedMessages = [...chat.messages, newMessage];
-
-    // 2. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('support_chats')
-        .update({ messages: updatedMessages }) // messages là cột JSONB
-        .eq('chat_id', chatId);
-
-    if (updateError) {
-        console.error("Lỗi gửi tin nhắn admin:", updateError);
-        showMessage('❌ Lỗi gửi tin nhắn, vui lòng thử lại.');
-        return;
-    }
+    chat.messages.push(newMessage);
+    localStorage.setItem('supportChats', JSON.stringify(supportChats));
     
     messageInput.value = '';
-    // Realtime Sync sẽ tự động tải lại openAdminChat()
+    openAdminChat(chatId);
 }
 
 function closeAdminChat() {
@@ -1330,9 +1109,8 @@ function closeAdminChat() {
     }
 }
 
-// ========== CÁC HÀM ĐĂNG KÝ/ĐĂNG NHẬP (ĐÃ SỬA DỤNG SUPABASE) ==========
-
-async function handleLogin() {
+// ========== CÁC HÀM ĐĂNG KÝ/ĐĂNG NHẬP ĐÃ SỬA ==========
+function handleLogin() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     
@@ -1353,36 +1131,16 @@ async function handleLogin() {
         localStorage.setItem('currentUser', JSON.stringify(adminUser));
         showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
         
+        // Đảm bảo chuyển hướng ngay lập tức
         setTimeout(() => {
             window.location.href = 'admin.html';
         }, 1000);
         return;
     }
     
-    // 1. TÌM KIẾM NGƯỜI DÙNG TRONG SUPABASE
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password) 
-        .eq('status', 'active')
-        .single(); 
-        
-    if (userError && userError.code !== 'PGRST116') { // PGRST116 là lỗi không tìm thấy (No Rows)
-        console.error("Lỗi đăng nhập từ Supabase:", userError);
-        showMessage('❌ Lỗi kết nối CSDL, vui lòng thử lại sau.');
-        return;
-    }
-
-    if (userData) {
-        const user = {
-            id: userData.user_id,
-            name: userData.name,
-            email: userData.email,
-            phone: userData.phone,
-            role: userData.role
-        };
-        
+    const user = users.find(u => u.email === email && u.password === password && u.status === 'active');
+    
+    if (user) {
         if (user.role === 'admin') {
             localStorage.setItem('currentUser', JSON.stringify(user));
             showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
@@ -1402,7 +1160,7 @@ async function handleLogin() {
     }
 }
 
-async function handleAdminLogin() {
+function handleAdminLogin() {
     const email = document.getElementById('admin-email').value;
     const password = document.getElementById('admin-password').value;
     
@@ -1427,30 +1185,10 @@ async function handleAdminLogin() {
         return;
     }
     
-    // 1. TÌM KIẾM ADMIN TRONG SUPABASE
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password)
-        .eq('role', 'admin')
-        .eq('status', 'active')
-        .single();
-        
-    if (userError && userError.code !== 'PGRST116') {
-        console.error("Lỗi đăng nhập admin từ Supabase:", userError);
-        showMessage('❌ Lỗi kết nối CSDL, vui lòng thử lại sau.');
-        return;
-    }
-
-    if (userData) {
-        currentUser = {
-            id: userData.user_id,
-            name: userData.name,
-            email: userData.email,
-            phone: userData.phone,
-            role: userData.role
-        };
+    const user = users.find(u => u.email === email && u.password === password && u.role === 'admin' && u.status === 'active');
+    
+    if (user) {
+        currentUser = user;
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         updateAdminAccountDisplay();
         showMessage('Đăng nhập admin thành công!');
@@ -1460,7 +1198,7 @@ async function handleAdminLogin() {
     }
 }
 
-async function register() {
+function register() {
     const name = document.getElementById('register-name').value;
     const email = document.getElementById('register-email').value;
     const phone = document.getElementById('register-phone').value;
@@ -1477,47 +1215,27 @@ async function register() {
         return;
     }
     
-    // 1. KIỂM TRA EMAIL ĐÃ TỒN TẠI CHƯA
-    const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', email);
-        
-    if (checkError) {
-        console.error("Lỗi kiểm tra email:", checkError);
-        showMessage('❌ Lỗi kết nối CSDL khi kiểm tra email.');
-        return;
-    }
-    
-    if (existingUser && existingUser.length > 0) {
+    if (users.find(user => user.email === email)) {
         showMessage('Email đã được sử dụng');
         return;
     }
     
     const newUser = {
-        user_id: generateUserId(), // Sử dụng cột DB
+        id: generateUserId(),
         name: name,
         email: email,
         phone: phone,
         password: password,
         role: 'customer',
         status: 'active',
+        createdAt: new Date().toISOString()
     };
     
-    // 2. CHÈN NGƯỜI DÙNG MỚI VÀO SUPABASE
-    const { error: insertError } = await supabase
-        .from('users')
-        .insert([newUser]);
-
-    if (insertError) {
-        console.error("Lỗi đăng ký:", insertError);
-        showMessage('❌ Lỗi đăng ký, vui lòng thử lại.');
-        return;
-    }
+    users.push(newUser);
+    localStorage.setItem('users', JSON.stringify(users));
     
     showMessage('Đăng ký thành công! Vui lòng đăng nhập.');
     showLoginForm();
-    // Realtime Sync sẽ tự động cập nhật biến users
 }
 
 function logout() {
@@ -1546,7 +1264,7 @@ function updateAccountDisplay() {
         userDetails.innerHTML = `
             <p><strong>Họ tên:</strong> ${currentUser.name}</p>
             <p><strong>Email:</strong> ${currentUser.email}</p>
-            <p><strong>SĐT:</strong> ${currentUser.phone || 'N/A'}</p>
+            <p><strong>SĐT:</strong> ${currentUser.phone}</p>
             <p><strong>Vai trò:</strong> Khách hàng</p>
         `;
     } else if (loginForm && registerForm && accountInfo) {
@@ -1586,7 +1304,7 @@ function checkAdminLoginStatus() {
 function updateCustomerLinkVisibility() {
     const customerLink = document.querySelector('footer a[href="index.html"]');
     if (customerLink && currentUser) {
-        // Giữ nút này để admin có thể truy cập trang khách hàng
+        customerLink.style.display = 'none';
     }
 }
 
@@ -1631,8 +1349,7 @@ function loadAdminOrders() {
         return;
     }
     
-    // Dùng biến orders toàn cục (đã được fetch)
-    displayAdminOrders(orders, ordersList);
+    displayAdminOrders(adminOrders, ordersList);
 }
 
 function displayAdminOrders(ordersToDisplay, ordersList) {
@@ -1642,13 +1359,11 @@ function displayAdminOrders(ordersToDisplay, ordersList) {
     }
     
     ordersList.innerHTML = ordersToDisplay.map(order => {
-        // Lấy thông tin user từ biến toàn cục users
         const user = users.find(u => u.id === order.userId) || { name: order.userName || 'Khách hàng', email: 'N/A' };
         
         let priceSettingsBtn = '';
-        // Thay đổi nút cài đặt giá thành nút điều chỉnh giá cho đơn hàng
-        if (order.status !== 'completed' && order.status !== 'cancelled') {
-            priceSettingsBtn = `<button class="secondary" onclick="showOrderPriceSettings('${order.id}')">Điều chỉnh giá</button>`;
+        if (order.status === 'pending') {
+            priceSettingsBtn = `<button class="secondary" onclick="showPriceSettings('${order.id}')">Điều chỉnh giá</button>`;
         }
         
         return `
@@ -1678,7 +1393,6 @@ function displayAdminOrders(ordersToDisplay, ordersList) {
                 </div>
                 <div class="order-actions">
                     ${priceSettingsBtn}
-                    <button class="secondary" onclick="showPriceSettings()">Cài đặt Giá HT</button>
                     ${order.fileData ? `
                         <button class="secondary" onclick="downloadFile('${order.id}')">Tải file</button>
                     ` : ''}
@@ -1697,7 +1411,7 @@ function displayAdminOrders(ordersToDisplay, ordersList) {
     }).join('');
 }
 
-// Hàm LƯU CÀI ĐẶT GIÁ HỆ THỐNG (ĐÃ SỬA DỤNG SUPABASE)
+// ========== TÍNH NĂNG ĐIỀU CHỈNH GIÁ CHO ADMIN ==========
 function showPriceSettings() {
     const modal = document.getElementById('user-management-modal');
     const form = document.getElementById('user-management-form');
@@ -1727,7 +1441,7 @@ function showPriceSettings() {
     modal.style.display = 'block';
 }
 
-async function saveSystemPriceSettings() {
+function saveSystemPriceSettings() {
     const priceText = parseInt(document.getElementById('price-text').value);
     const pricePrint = parseInt(document.getElementById('price-print').value);
     const priceExtra = parseInt(document.getElementById('price-extra').value);
@@ -1738,25 +1452,13 @@ async function saveSystemPriceSettings() {
         return;
     }
     
-    // 1. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('print_prices')
-        .upsert([
-            { 
-                id: 1, // Dùng ID 1 để đảm bảo chỉ có 1 dòng
-                text_price: priceText, 
-                print_price: pricePrint, 
-                extra_page: priceExtra 
-            }
-        ], { onConflict: 'id' });
-
-    if (updateError) {
-        console.error("Lỗi cập nhật giá:", updateError);
-        showMessage('❌ Lỗi cập nhật giá hệ thống, vui lòng thử lại.');
-        return;
-    }
+    printPrices = {
+        text: priceText,
+        print: pricePrint,
+        extra_page: priceExtra
+    };
     
-    // Xóa code cũ: localStorage.setItem(...)
+    localStorage.setItem('printPrices', JSON.stringify(printPrices));
     
     const modal = document.getElementById('user-management-modal');
     if (modal) {
@@ -1764,19 +1466,29 @@ async function saveSystemPriceSettings() {
     }
     
     showMessage('Đã cập nhật giá hệ thống thành công!');
-    // Realtime Sync sẽ tự động cập nhật printPrices
+    
+    if (!document.querySelector('h1').textContent.includes('ADMIN')) {
+        updatePriceDisplay();
+        calculateTotalPrice();
+    }
 }
 
 function resetSystemPriceSettings() {
-    document.getElementById('price-text').value = 1000;
-    document.getElementById('price-print').value = 2000;
-    document.getElementById('price-extra').value = 500;
+    printPrices = {
+        'text': 1000,
+        'print': 2000,
+        'extra_page': 500
+    };
     
-    showMessage('Đã đặt lại giá mặc định (chưa lưu, nhấn "Lưu cài đặt giá" để lưu)');
+    document.getElementById('price-text').value = printPrices.text;
+    document.getElementById('price-print').value = printPrices.print;
+    document.getElementById('price-extra').value = printPrices.extra_page;
+    
+    showMessage('Đã đặt lại giá mặc định');
 }
 
 function showOrderPriceSettings(orderId) {
-    const order = orders.find(order => order.id === orderId);
+    const order = adminOrders.find(order => order.id === orderId);
     if (!order) return;
     
     const modal = document.getElementById('user-management-modal');
@@ -1799,8 +1511,7 @@ function showOrderPriceSettings(orderId) {
     modal.style.display = 'block';
 }
 
-// Hàm LƯU GIÁ ĐƠN HÀNG ĐIỀU CHỈNH (ĐÃ SỬA DỤNG SUPABASE)
-async function saveAdjustedPrice(orderId) {
+function saveAdjustedPrice(orderId) {
     const adjustedPrice = parseInt(document.getElementById('adjust-price').value);
     
     if (isNaN(adjustedPrice) || adjustedPrice < 0) {
@@ -1808,19 +1519,17 @@ async function saveAdjustedPrice(orderId) {
         return;
     }
     
-    // 1. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('orders')
-        .update({ total_price: adjustedPrice })
-        .eq('order_id', orderId);
-
-    if (updateError) {
-        console.error("Lỗi cập nhật giá đơn hàng:", updateError);
-        showMessage('❌ Lỗi cập nhật giá đơn hàng, vui lòng thử lại.');
-        return;
+    const adminOrderIndex = adminOrders.findIndex(order => order.id === orderId);
+    if (adminOrderIndex !== -1) {
+        adminOrders[adminOrderIndex].totalPrice = adjustedPrice;
+        localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
     }
-
-    // Xóa code cũ: localStorage.setItem(...)
+    
+    const customerOrderIndex = orders.findIndex(order => order.id === orderId);
+    if (customerOrderIndex !== -1) {
+        orders[customerOrderIndex].totalPrice = adjustedPrice;
+        localStorage.setItem('customerOrders', JSON.stringify(orders));
+    }
     
     const modal = document.getElementById('user-management-modal');
     if (modal) {
@@ -1828,11 +1537,11 @@ async function saveAdjustedPrice(orderId) {
     }
     
     showMessage('Đã cập nhật giá thành công!');
-    // Realtime Sync sẽ tự động tải lại loadAdminOrders()
+    loadAdminOrders();
 }
 
 function calculateAutoPrice(orderId) {
-    const order = orders.find(order => order.id === orderId);
+    const order = adminOrders.find(order => order.id === orderId);
     if (!order) return;
     
     let calculatedPrice = 0;
@@ -1851,7 +1560,7 @@ function calculateAutoPrice(orderId) {
 }
 
 function downloadFile(orderId) {
-    const order = orders.find(order => order.id === orderId);
+    const order = adminOrders.find(order => order.id === orderId);
     if (!order || !order.fileData) {
         showMessage('Không có file để tải');
         return;
@@ -1871,58 +1580,55 @@ function downloadFile(orderId) {
     URL.revokeObjectURL(url);
 }
 
-// Hàm NHẬN ĐƠN HÀNG (ĐÃ SỬA DỤNG SUPABASE)
-async function acceptOrder(orderId) {
-    // 1. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: 'processing' })
-        .eq('order_id', orderId);
-
-    if (updateError) {
-        console.error("Lỗi nhận đơn hàng:", updateError);
-        showMessage('❌ Lỗi nhận đơn hàng, vui lòng thử lại.');
-        return;
+function acceptOrder(orderId) {
+    const orderIndex = adminOrders.findIndex(order => order.id === orderId);
+    if (orderIndex !== -1) {
+        adminOrders[orderIndex].status = 'processing';
+        localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+        
+        const customerOrderIndex = orders.findIndex(order => order.id === orderId);
+        if (customerOrderIndex !== -1) {
+            orders[customerOrderIndex].status = 'processing';
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+        }
+        
+        showMessage('Đã nhận đơn hàng');
+        loadAdminOrders();
     }
-
-    showMessage('Đã nhận đơn hàng');
-    // Realtime Sync sẽ tự động tải lại loadAdminOrders()
 }
 
-// Hàm HOÀN THÀNH ĐƠN HÀNG (ĐÃ SỬA DỤNG SUPABASE)
-async function completeOrder(orderId) {
-    // 1. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: 'completed' })
-        .eq('order_id', orderId);
-
-    if (updateError) {
-        console.error("Lỗi hoàn thành đơn hàng:", updateError);
-        showMessage('❌ Lỗi hoàn thành đơn hàng, vui lòng thử lại.');
-        return;
+function completeOrder(orderId) {
+    const orderIndex = adminOrders.findIndex(order => order.id === orderId);
+    if (orderIndex !== -1) {
+        adminOrders[orderIndex].status = 'completed';
+        localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+        
+        const customerOrderIndex = orders.findIndex(order => order.id === orderId);
+        if (customerOrderIndex !== -1) {
+            orders[customerOrderIndex].status = 'completed';
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+        }
+        
+        showMessage('Đã hoàn thành đơn hàng');
+        loadAdminOrders();
     }
-
-    showMessage('Đã hoàn thành đơn hàng');
-    // Realtime Sync sẽ tự động tải lại loadAdminOrders()
 }
 
-// Hàm HỦY ĐƠN HÀNG ADMIN (ĐÃ SỬA DỤNG SUPABASE)
-async function cancelOrderAdmin(orderId) {
-    // 1. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: 'cancelled' })
-        .eq('order_id', orderId);
-
-    if (updateError) {
-        console.error("Lỗi huỷ đơn hàng:", updateError);
-        showMessage('❌ Lỗi huỷ đơn hàng, vui lòng thử lại.');
-        return;
+function cancelOrderAdmin(orderId) {
+    const orderIndex = adminOrders.findIndex(order => order.id === orderId);
+    if (orderIndex !== -1) {
+        adminOrders[orderIndex].status = 'cancelled';
+        localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+        
+        const customerOrderIndex = orders.findIndex(order => order.id === orderId);
+        if (customerOrderIndex !== -1) {
+            orders[customerOrderIndex].status = 'cancelled';
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+        }
+        
+        showMessage('Đã huỷ đơn hàng');
+        loadAdminOrders();
     }
-
-    showMessage('Đã huỷ đơn hàng');
-    // Realtime Sync sẽ tự động tải lại loadAdminOrders()
 }
 
 function loadUserStatistics() {
@@ -1947,7 +1653,7 @@ function loadUserStatistics() {
             <td>${index + 1}</td>
             <td>${user.name}</td>
             <td>${user.email}</td>
-            <td>${user.phone || 'N/A'}</td>
+            <td>${user.phone}</td>
             <td>${user.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}</td>
             <td>${user.status === 'active' ? 'Hoạt động' : 'Bị khoá'}</td>
             <td>
@@ -2012,22 +1718,17 @@ function manageUser(userId) {
     modal.style.display = 'block';
 }
 
-// Hàm LƯU THAY ĐỔI USER (ĐÃ SỬA DỤNG SUPABASE)
-async function saveUserChanges(userId) {
+function saveUserChanges(userId) {
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex === -1) return;
+    
     const newRole = document.getElementById('user-role').value;
     const newStatus = document.getElementById('user-status').value;
     
-    // 1. CẬP NHẬT TRONG SUPABASE
-    const { error: updateError } = await supabase
-        .from('users')
-        .update({ role: newRole, status: newStatus })
-        .eq('user_id', userId);
-        
-    if (updateError) {
-        console.error("Lỗi cập nhật người dùng:", updateError);
-        showMessage('❌ Lỗi cập nhật người dùng, vui lòng thử lại.');
-        return;
-    }
+    users[userIndex].role = newRole;
+    users[userIndex].status = newStatus;
+    
+    localStorage.setItem('users', JSON.stringify(users));
     
     const modal = document.getElementById('user-management-modal');
     if (modal) {
@@ -2035,31 +1736,21 @@ async function saveUserChanges(userId) {
     }
     
     showMessage('Đã cập nhật thông tin người dùng');
-    // Realtime Sync sẽ tự động tải lại loadUserStatistics()
+    loadUserStatistics();
 }
 
-// Hàm XÓA USER (ĐÃ SỬA DỤNG SUPABASE)
-async function deleteUser(userId) {
+function deleteUser(userId) {
     if (confirm('Bạn có chắc chắn muốn xoá tài khoản này?')) {
-        // 1. XÓA TRONG SUPABASE
-        const { error: deleteError } = await supabase
-            .from('users')
-            .delete()
-            .eq('user_id', userId);
-            
-        if (deleteError) {
-            console.error("Lỗi xóa người dùng:", deleteError);
-            showMessage('❌ Lỗi xóa người dùng, vui lòng thử lại.');
-            return;
-        }
-
+        users = users.filter(u => u.id !== userId);
+        localStorage.setItem('users', JSON.stringify(users));
+        
         const modal = document.getElementById('user-management-modal');
         if (modal) {
             modal.style.display = 'none';
         }
         
         showMessage('Đã xoá tài khoản');
-        // Realtime Sync sẽ tự động tải lại loadUserStatistics()
+        loadUserStatistics();
     }
 }
 
@@ -2069,16 +1760,15 @@ function generateOrderId() {
 }
 
 function generateUserId() {
-    // Tạo ID mới cho user
-    return 'USER' + Date.now() + Math.floor(Math.random() * 1000);
+    return 'USER' + Date.now();
 }
 
 function generateMessageId() {
-    return 'MSG' + Date.now() + Math.floor(Math.random() * 1000);
+    return 'MSG' + Date.now();
 }
 
 function generateChatId() {
-    return 'CHAT' + Date.now() + Math.floor(Math.random() * 1000);
+    return 'CHAT' + Date.now();
 }
 
 function getStatusText(status) {
