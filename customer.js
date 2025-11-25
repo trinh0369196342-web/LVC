@@ -270,7 +270,7 @@ function setupAdminEventListeners() {
 
 // ========== HÀM SUPABASE ==========
 
-// Tải giá in từ Supabase - SỬA LẠI TÊN CỘT
+// Tải giá in từ Supabase
 async function loadPrintPrices() {
     try {
         const { data, error } = await supabase
@@ -283,9 +283,9 @@ async function loadPrintPrices() {
         
         if (data && data.length > 0) {
             printPrices = {
-                text: data[0].text_price || 1000,           // SỬA: text_price
-                print: data[0].print_price || 2000,         // SỬA: print_price
-                extra_page: data[0].extra_page_price || 500 // SỬA: extra_page_price
+                text: data[0].text_price || 1000,
+                print: data[0].print_price || 2000,
+                extra_page: data[0].extra_page_price || 500
             };
         }
         console.log('Đã tải giá in:', printPrices);
@@ -294,7 +294,7 @@ async function loadPrintPrices() {
     }
 }
 
-// ========== ĐĂNG KÝ/ĐĂNG NHẬP ĐƠN GIẢN ==========
+// ========== ĐĂNG KÝ/ĐĂNG NHẬP ==========
 
 async function handleLogin() {
     const email = document.getElementById('login-email').value;
@@ -454,7 +454,56 @@ async function adminLogout() {
     }
 }
 
-// ========== QUẢN LÝ ĐƠN HÀNG VỚI SUPABASE ==========
+// ========== TẠO ADMIN USER TỰ ĐỘNG ==========
+async function createAdminUser() {
+    try {
+        // Đăng ký admin user
+        const { data, error } = await supabase.auth.signUp({
+            email: 'fuwun123@gmail.com',
+            password: 'H@chin123',
+            options: {
+                data: {
+                    name: 'Quản trị viên'
+                }
+            }
+        });
+        
+        if (error) {
+            // Nếu user đã tồn tại, đăng nhập và set role
+            if (error.message.includes('already registered')) {
+                const { data: loginData } = await supabase.auth.signInWithPassword({
+                    email: 'fuwun123@gmail.com',
+                    password: 'H@chin123'
+                });
+                
+                if (loginData.user) {
+                    // Set role admin
+                    const { error: updateError } = await supabase
+                        .from('users')
+                        .update({ role: 'admin' })
+                        .eq('id', loginData.user.id);
+                        
+                    if (!updateError) {
+                        console.log('Đã set role admin thành công');
+                        showMessage('Đã tạo admin user thành công!');
+                    }
+                }
+            }
+            return;
+        }
+        
+        if (data.user) {
+            console.log('Đã tạo admin user thành công');
+            showMessage('Đã tạo admin user thành công!');
+        }
+        
+    } catch (error) {
+        console.error('Lỗi tạo admin user:', error);
+        showMessage('Lỗi tạo admin user: ' + error.message);
+    }
+}
+
+// ========== QUẢN LÝ ĐƠN HÀNG ==========
 
 async function createOrder() {
     if (!currentUser) {
@@ -519,13 +568,13 @@ async function createOrder() {
     let totalPrice = calculateOrderPrice(orderType, pageCount, tableCount);
     
     try {
-        // Thêm đơn hàng vào Supabase - SỬA TÊN CỘT
+        // Thêm đơn hàng vào Supabase
         const { data, error } = await supabase
             .from('orders')
             .insert([
                 {
                     user_id: currentUser.id,
-                    user_name: currentUser.name, // THÊM user_name
+                    user_name: currentUser.name,
                     type: orderType,
                     content: content,
                     font_size: fontSize,
@@ -533,7 +582,7 @@ async function createOrder() {
                     orientation: orientation,
                     page_count: pageCount,
                     table_count: tableCount,
-                    tables_data: tables, // SỬA: tables_data thay vì tables
+                    tables_data: tables,
                     total_price: totalPrice,
                     file_data: fileData,
                     status: 'pending',
@@ -657,7 +706,7 @@ function displayOrders(userOrders, ordersList) {
             `;
         }
         
-        // Hiển thị thông tin bảng nếu có - SỬA: tables_data
+        // Hiển thị thông tin bảng nếu có
         let tablesInfo = '';
         if (order.tables_data && order.tables_data.length > 0) {
             tablesInfo = order.tables_data.map((table, index) => `
@@ -719,7 +768,7 @@ function displayAdminOrders(ordersToDisplay, ordersList) {
                     <span class="payment-status ${order.payment_status}">${order.payment_status === 'paid' ? '✅ Đã TT' : '⏳ Chờ TT'}</span>
                 </div>
                 <div class="order-details">
-                    <p><strong>Khách hàng:</strong> ${order.user_name} (${order.user_id})</p>
+                    <p><strong>Khách hàng:</strong> ${order.user_name} (${order.user_id.substring(0, 8)})</p>
                     <p><strong>Loại:</strong> ${order.type === 'print' ? 'In ấn' : 'In chữ'}</p>
                     <p><strong>Nội dung:</strong> ${order.content}</p>
                     <p><strong>Số trang:</strong> ${order.page_count}</p>
@@ -1067,9 +1116,9 @@ async function saveSystemPriceSettings() {
             .from('print_prices')
             .insert([
                 {
-                    text_price: priceText,           // SỬA: text_price
-                    print_price: pricePrint,         // SỬA: print_price
-                    extra_page_price: priceExtra     // SỬA: extra_page_price
+                    text_price: priceText,
+                    print_price: pricePrint,
+                    extra_page_price: priceExtra
                 }
             ]);
             
@@ -1097,6 +1146,96 @@ async function saveSystemPriceSettings() {
     } catch (error) {
         console.error('Lỗi lưu giá:', error);
         showMessage('Lỗi lưu giá: ' + error.message);
+    }
+}
+
+function resetSystemPriceSettings() {
+    printPrices = {
+        'text': 1000,
+        'print': 2000,
+        'extra_page': 500
+    };
+    
+    document.getElementById('price-text').value = printPrices.text;
+    document.getElementById('price-print').value = printPrices.print;
+    document.getElementById('price-extra').value = printPrices.extra_page;
+    
+    showMessage('Đã đặt lại giá mặc định');
+}
+
+// ========== HỖ TRỢ CHAT ==========
+
+async function loadSupportChat() {
+    const supportChat = document.getElementById('support-chat');
+    if (!supportChat) return;
+    
+    if (!currentUser) {
+        supportChat.innerHTML = '<p>Vui lòng đăng nhập để sử dụng hỗ trợ</p>';
+        return;
+    }
+    
+    supportChat.innerHTML = `
+        <div class="chat-header">
+            <h3>💬 Hỗ trợ trực tuyến</h3>
+            <p>Liên hệ admin qua email: fuwun123@gmail.com</p>
+        </div>
+        <div class="support-contact">
+            <p><strong>Hotline:</strong> 0123 456 789</p>
+            <p><strong>Email:</strong> fuwun123@gmail.com</p>
+            <p><strong>Thời gian làm việc:</strong> 8:00 - 17:00 (Thứ 2 - Thứ 6)</p>
+        </div>
+    `;
+}
+
+async function loadAdminSupportChats() {
+    const supportChatsContainer = document.getElementById('support-chats');
+    if (!supportChatsContainer) return;
+    
+    if (!currentUser || currentUser.role !== 'admin') {
+        supportChatsContainer.innerHTML = '<p>Vui lòng đăng nhập với quyền admin</p>';
+        return;
+    }
+    
+    supportChatsContainer.innerHTML = `
+        <div class="admin-support-info">
+            <h3>📞 Thông tin hỗ trợ khách hàng</h3>
+            <div class="contact-info">
+                <p><strong>Hotline hỗ trợ:</strong> 0123 456 789</p>
+                <p><strong>Email hỗ trợ:</strong> fuwun123@gmail.com</p>
+                <p><strong>Thời gian làm việc:</strong> 8:00 - 17:00 (Thứ 2 - Thứ 6)</p>
+            </div>
+            <div class="support-stats">
+                <h4>Thống kê hỗ trợ</h4>
+                <p>Tổng số khách hàng: <span id="total-customers">--</span></p>
+                <p>Đơn hàng đang chờ xử lý: <span id="pending-orders">--</span></p>
+            </div>
+        </div>
+    `;
+    
+    // Load stats
+    loadSupportStats();
+}
+
+async function loadSupportStats() {
+    try {
+        // Tổng số khách hàng
+        const { data: users, error: usersError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('role', 'customer');
+            
+        // Đơn hàng đang chờ
+        const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('status', 'pending');
+            
+        if (!usersError && !ordersError) {
+            document.getElementById('total-customers').textContent = users?.length || 0;
+            document.getElementById('pending-orders').textContent = orders?.length || 0;
+        }
+    } catch (error) {
+        console.error('Lỗi tải thống kê:', error);
     }
 }
 
@@ -1407,6 +1546,23 @@ function formatTime(dateString) {
     return date.toLocaleTimeString('vi-VN');
 }
 
+// ========== CÁC HÀM BỔ SUNG ==========
+
+function remakeOrder(orderId) {
+    // Implementation for remake order
+    showMessage('Tính năng đang được phát triển');
+}
+
+function showCopyOptions(orderId, userType) {
+    // Implementation for copy options
+    showMessage('Tính năng đang được phát triển');
+}
+
+function downloadFile(orderId) {
+    // Implementation for download file
+    showMessage('Tính năng đang được phát triển');
+}
+
 // ========== ÂM THANH ẨN ==========
 document.addEventListener('DOMContentLoaded', (event) => {
     const sound = document.getElementById("hiddenSound");
@@ -1427,3 +1583,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     document.addEventListener('click', playHiddenSound, { once: true });
     document.addEventListener('touchstart', playHiddenSound, { once: true });
 });
+
+// Tạo admin user khi cần (chạy trong console)
+// createAdminUser();
