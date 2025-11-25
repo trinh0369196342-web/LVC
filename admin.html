@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trang ADMIN</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Thêm Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header>
@@ -44,6 +46,9 @@
       <div class="section-info">
         <p>Quản lý và xử lý tất cả đơn hàng từ khách hàng</p>
       </div>
+      <div class="search-container">
+        <input type="text" id="search-orders" placeholder="Tìm kiếm đơn hàng...">
+      </div>
       <div id="orders-list">
         <!-- Danh sách đơn hàng sẽ được hiển thị ở đây -->
       </div>
@@ -81,8 +86,8 @@
       <div class="section-info">
         <p>Xử lý các yêu cầu hỗ trợ từ khách hàng</p>
       </div>
-      <div id="support-messages">
-        <!-- Tin nhắn hỗ trợ sẽ được hiển thị ở đây -->
+      <div id="support-chats">
+        <!-- Danh sách chat hỗ trợ sẽ được hiển thị ở đây -->
       </div>
     </section>
 
@@ -133,6 +138,16 @@
       <div class="modal-content">
         <span class="close">&times;</span>
         <p id="modal-message"></p>
+      </div>
+    </div>
+
+    <!-- Modal sao chép đơn hàng -->
+    <div id="copy-options-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="copy-options">
+          <!-- Tùy chọn sao chép sẽ được hiển thị ở đây -->
+        </div>
       </div>
     </div>
   </main>

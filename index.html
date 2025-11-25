@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trang Khách Hàng</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Thêm Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header class="n">
@@ -138,6 +140,9 @@
     <!-- Section THÔNG TIN ĐƠN HÀNG -->
     <section id="orders-section" class="section">
       <h2>Thông Tin Đơn Hàng</h2>
+      <div class="search-container">
+        <input type="text" id="search-orders" placeholder="Tìm kiếm đơn hàng...">
+      </div>
       <div id="orders-list">
         <!-- Danh sách đơn hàng sẽ được hiển thị ở đây -->
       </div>
@@ -146,15 +151,8 @@
     <!-- Section HỖ TRỢ -->
     <section id="support-section" class="section">
       <h2>Hỗ Trợ Khách Hàng</h2>
-      <div class="form-group">
-        <label for="support-message">Tin nhắn hỗ trợ:</label>
-        <textarea id="support-message" rows="5" placeholder="Nhập nội dung cần hỗ trợ..."></textarea>
-      </div>
-      <button type="button" id="send-support">Gửi Yêu Cầu Hỗ Trợ</button>
-      
-      <div id="support-history">
-        <h3>Lịch sử hỗ trợ</h3>
-        <!-- Lịch sử hỗ trợ sẽ được hiển thị ở đây -->
+      <div id="support-chat">
+        <!-- Chat hỗ trợ sẽ được hiển thị ở đây -->
       </div>
     </section>
 
@@ -214,6 +212,16 @@
       <div class="modal-content">
         <span class="close">&times;</span>
         <p id="modal-message"></p>
+      </div>
+    </div>
+
+    <!-- Modal sao chép đơn hàng -->
+    <div id="copy-options-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <div id="copy-options">
+          <!-- Tùy chọn sao chép sẽ được hiển thị ở đây -->
+        </div>
       </div>
     </div>
   </main>
