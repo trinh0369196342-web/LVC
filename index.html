@@ -232,6 +232,18 @@
   <footer>
     <p><a href="admin.html">Chuyển đến trang Admin</a></p>
   </footer>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  const SUPABASE_URL = 'https://dgenfstgozszveobuwpu.supabase.co'; 
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnZW5mc3Rnb3pzenZlb2J1d3B1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5OTY4MjUsImV4cCI6MjA3OTU3MjgyNX0.AWOWngCZNT_uK4RiDjGkZlu3ApallSg39rayroln4tg';
+
+  // Tạo biến kết nối toàn cục 'supabase'
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  
+  console.log("Đã kết nối Supabase thành công!");
+</script>
+
   <script src="customer.js"></script>
 </body>
 </html>

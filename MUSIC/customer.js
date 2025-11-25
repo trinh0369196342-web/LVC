@@ -9,6 +9,7 @@ let printPrices = JSON.parse(localStorage.getItem('printPrices')) || {
     'print': 2000,
     'extra_page': 500
 };
+let supportChats = JSON.parse(localStorage.getItem('supportChats')) || [];
 
 // Khởi tạo trang
 document.addEventListener('DOMContentLoaded', function() {
@@ -25,7 +26,81 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Đang ở trang KHÁCH HÀNG');
         initializeCustomerPage();
     }
+    
+    // Thêm listener để đồng bộ giữa các tab
+    setupStorageSync();
 });
+
+// ========== ĐỒNG BỘ GIỮA CÁC TAB ==========
+function setupStorageSync() {
+    window.addEventListener('storage', function(e) {
+        console.log('Storage changed:', e.key);
+        
+        if (e.key === 'currentUser') {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                console.log('Đồng bộ currentUser:', currentUser);
+                
+                // Kiểm tra trang hiện tại và chuyển hướng nếu cần
+                const isAdminPage = document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN');
+                
+                if (currentUser.role === 'admin' && !isAdminPage) {
+                    window.location.href = 'admin.html';
+                    return;
+                } else if (currentUser.role !== 'admin' && isAdminPage) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Cập nhật giao diện
+                if (isAdminPage) {
+                    updateAdminAccountDisplay();
+                } else {
+                    updateAccountDisplay();
+                    updateAdminLinkVisibility();
+                }
+            } else {
+                currentUser = null;
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    updateAdminAccountDisplay();
+                } else {
+                    updateAccountDisplay();
+                    updateAdminLinkVisibility();
+                }
+            }
+        }
+        
+        // Đồng bộ dữ liệu đơn hàng
+        if (e.key === 'customerOrders' || e.key === 'adminOrders') {
+            orders = JSON.parse(localStorage.getItem('customerOrders')) || [];
+            adminOrders = JSON.parse(localStorage.getItem('adminOrders')) || [];
+            
+            const currentSection = document.querySelector('.section.active');
+            if (currentSection?.id === 'orders-section') {
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    loadAdminOrders();
+                } else {
+                    loadOrders();
+                }
+            }
+        }
+        
+        // Đồng bộ chat
+        if (e.key === 'supportChats') {
+            supportChats = JSON.parse(localStorage.getItem('supportChats')) || [];
+            
+            const currentSection = document.querySelector('.section.active');
+            if (currentSection?.id === 'support-section') {
+                if (document.querySelector('h1')?.textContent.toUpperCase().includes('ADMIN')) {
+                    loadAdminSupportChats();
+                } else {
+                    loadSupportChat();
+                }
+            }
+        }
+    });
+}
 
 // ========== TRANG KHÁCH HÀNG ==========
 function initializeCustomerPage() {
@@ -35,7 +110,7 @@ function initializeCustomerPage() {
     updateAdminLinkVisibility();
     showSection('home-section');
     updatePriceDisplay();
-    calculateTotalPrice(); // Tính giá ngay khi khởi tạo (hàm tự che chắn nếu thiếu phần tử)
+    calculateTotalPrice();
 }
 
 function setupCustomerEventListeners() {
@@ -64,7 +139,7 @@ function setupCustomerEventListeners() {
         navSupport.addEventListener('click', (e) => {
             e.preventDefault();
             showSection('support-section');
-            loadSupportHistory();
+            loadSupportChat();
         });
     }
     if (navAccount) {
@@ -75,9 +150,9 @@ function setupCustomerEventListeners() {
         });
     }
     
-    // Form đơn hàng - THÊM SỰ KIỆN CHO TÍNH GIÁ
+    // Form đơn hàng
     const orderType = document.getElementById('order-type');
-    const createOrderBtn = document.getElementById('create-order'); // đổi tên để không trùng hàm
+    const createOrderBtn = document.getElementById('create-order');
     const resetForm = document.getElementById('reset-form');
     const tableCount = document.getElementById('table-count');
     const pageCount = document.getElementById('page-count');
@@ -89,13 +164,10 @@ function setupCustomerEventListeners() {
         });
     }
     if (createOrderBtn) {
-        // Gắn handler đến hàm createOrder (không trùng tên biến)
         createOrderBtn.addEventListener('click', (e) => {
             e.preventDefault();
             createOrder();
         });
-    } else {
-        console.warn('create-order button not found');
     }
     if (resetForm) {
         resetForm.addEventListener('click', (e) => {
@@ -122,25 +194,19 @@ function setupCustomerEventListeners() {
     const showRegisterBtn = document.getElementById('show-register');
     const showLoginBtn = document.getElementById('show-login');
     
-    if (loginBtn) loginBtn.addEventListener('click', (e) => { e.preventDefault(); login(); });
+    if (loginBtn) loginBtn.addEventListener('click', (e) => { e.preventDefault(); handleLogin(); });
     if (registerBtn) registerBtn.addEventListener('click', (e) => { e.preventDefault(); register(); });
     if (logoutBtn) logoutBtn.addEventListener('click', (e) => { e.preventDefault(); logout(); });
-    if (showRegisterBtn) {
-        showRegisterBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            showRegisterForm();
-        });
-    }
-    if (showLoginBtn) {
-        showLoginBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            showLoginForm();
-        });
-    }
+    if (showRegisterBtn) showRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); showRegisterForm(); });
+    if (showLoginBtn) showLoginBtn.addEventListener('click', (e) => { e.preventDefault(); showLoginForm(); });
     
-    // Hỗ trợ
-    const sendSupport = document.getElementById('send-support');
-    if (sendSupport) sendSupport.addEventListener('click', (e) => { e.preventDefault(); sendSupportMessage(); });
+    // Tìm kiếm
+    const searchInput = document.getElementById('search-orders');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchOrders(e.target.value);
+        });
+    }
     
     // Modal đóng
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -179,9 +245,6 @@ function updatePriceDisplay() {
                 </div>
             </div>
         `;
-        console.log('Đã cập nhật hiển thị giá');
-    } else {
-        console.warn('price-display element not found');
     }
 }
 
@@ -238,41 +301,25 @@ function setupAdminEventListeners() {
     const navSupport = document.getElementById('nav-support');
     const navAccount = document.getElementById('nav-account');
     
-    if (navOrders) {
-        navOrders.addEventListener('click', (e) => {
-            e.preventDefault();
-            showSection('orders-section');
-            loadAdminOrders();
-        });
-    }
-    if (navStatistics) {
-        navStatistics.addEventListener('click', (e) => {
-            e.preventDefault();
-            showSection('statistics-section');
-            loadUserStatistics();
-        });
-    }
-    if (navSupport) {
-        navSupport.addEventListener('click', (e) => {
-            e.preventDefault();
-            showSection('support-section');
-            loadAdminSupport();
-        });
-    }
-    if (navAccount) {
-        navAccount.addEventListener('click', (e) => {
-            e.preventDefault();
-            showSection('account-section');
-            updateAdminAccountDisplay();
-        });
-    }
+    if (navOrders) navOrders.addEventListener('click', (e) => { e.preventDefault(); showSection('orders-section'); loadAdminOrders(); });
+    if (navStatistics) navStatistics.addEventListener('click', (e) => { e.preventDefault(); showSection('statistics-section'); loadUserStatistics(); });
+    if (navSupport) navSupport.addEventListener('click', (e) => { e.preventDefault(); showSection('support-section'); loadAdminSupportChats(); });
+    if (navAccount) navAccount.addEventListener('click', (e) => { e.preventDefault(); showSection('account-section'); updateAdminAccountDisplay(); });
     
     // Đăng nhập admin
     const adminLoginBtn = document.getElementById('admin-login-btn');
     const adminLogoutBtn = document.getElementById('admin-logout-btn');
     
-    if (adminLoginBtn) adminLoginBtn.addEventListener('click', (e) => { e.preventDefault(); adminLogin(); });
+    if (adminLoginBtn) adminLoginBtn.addEventListener('click', (e) => { e.preventDefault(); handleAdminLogin(); });
     if (adminLogoutBtn) adminLogoutBtn.addEventListener('click', (e) => { e.preventDefault(); adminLogout(); });
+    
+    // Tìm kiếm admin
+    const adminSearchInput = document.getElementById('search-orders');
+    if (adminSearchInput) {
+        adminSearchInput.addEventListener('input', (e) => {
+            searchAdminOrders(e.target.value);
+        });
+    }
     
     // Modal đóng
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -286,20 +333,16 @@ function setupAdminEventListeners() {
 
 // ========== HÀM CHUNG ==========
 function showSection(sectionId) {
-    console.log('Chuyển đến section:', sectionId);
     document.querySelectorAll('.section').forEach(section => {
         section.classList.remove('active');
     });
     const section = document.getElementById(sectionId);
     if (section) {
         section.classList.add('active');
-    } else {
-        console.warn('section not found:', sectionId);
     }
 }
 
 function showMessage(message) {
-    console.log('Hiển thị thông báo:', message);
     const modal = document.getElementById('message-modal');
     const messageElement = document.getElementById('modal-message');
     
@@ -311,11 +354,10 @@ function showMessage(message) {
             modal.style.display = 'none';
         }, 3000);
     } else {
-        // Fallback nếu modal không tồn tại
         try {
             alert(message);
         } catch (e) {
-            console.log('Alert not available. Message:', message);
+            console.log('Message:', message);
         }
     }
 }
@@ -331,27 +373,68 @@ function formatCurrency(amount) {
     }
 }
 
+// ========== TÌM KIẾM ĐƠN HÀNG ==========
+function searchOrders(searchTerm) {
+    const ordersList = document.getElementById('orders-list');
+    if (!ordersList || !searchTerm) {
+        loadOrders();
+        return;
+    }
+    
+    if (!currentUser) return;
+    
+    const userOrders = orders.filter(order => 
+        order.userId === currentUser.id && 
+        order.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    if (userOrders.length === 0) {
+        ordersList.innerHTML = '<p>Không tìm thấy đơn hàng phù hợp</p>';
+        return;
+    }
+    
+    displayOrders(userOrders, ordersList);
+}
+
+function searchAdminOrders(searchTerm) {
+    const ordersList = document.getElementById('orders-list');
+    if (!ordersList || !searchTerm) {
+        loadAdminOrders();
+        return;
+    }
+    
+    const filteredOrders = adminOrders.filter(order => 
+        order.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.content.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    if (filteredOrders.length === 0) {
+        ordersList.innerHTML = '<p>Không tìm thấy đơn hàng phù hợp</p>';
+        return;
+    }
+    
+    displayAdminOrders(filteredOrders, ordersList);
+}
+
 // ========== HÀM KHÁCH HÀNG ==========
 function checkLoginStatus() {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
-        console.log('Người dùng đã đăng nhập:', currentUser);
         
+        // Nếu là admin đang ở trang khách hàng, chuyển hướng
         if (currentUser.role === 'admin') {
-            // nếu đang ở trang khách mà token admin thì chuyển
+            console.log('Phát hiện admin ở trang khách hàng, chuyển hướng...');
             window.location.href = 'admin.html';
             return;
         }
         
         updateAccountDisplay();
-    } else {
-        console.log('Chưa có người dùng đăng nhập');
     }
 }
 
 function updateAdminLinkVisibility() {
-    // Link admin chỉ hiển thị nếu chưa login hoặc là admin
     const adminLink = document.querySelector('footer a[href="admin.html"]');
     if (!adminLink) return;
     if (currentUser && currentUser.role !== 'admin') {
@@ -381,8 +464,6 @@ function toggleOrderOptions() {
 }
 
 function createOrder() {
-    console.log('Bắt đầu tạo đơn hàng...');
-    
     if (!currentUser) {
         showMessage('Vui lòng đăng nhập để tạo đơn hàng');
         return;
@@ -393,6 +474,7 @@ function createOrder() {
         showMessage('Form đơn hàng không tìm thấy');
         return;
     }
+    
     const orderType = orderTypeEl.value;
     const fontSizeEl = document.getElementById('font-size');
     const fontWeightEl = document.getElementById('font-weight');
@@ -405,8 +487,6 @@ function createOrder() {
     const orientation = orientationEl ? orientationEl.value : 'portrait';
     const pageCount = pageCountEl ? (parseInt(pageCountEl.value) || 1) : 1;
     const tableCount = tableCountEl ? (parseInt(tableCountEl.value) || 0) : 0;
-    
-    console.log('Thông tin đơn hàng:', { orderType, fontSize, fontWeight, orientation, pageCount, tableCount });
     
     let content = '';
     let fileData = null;
@@ -456,7 +536,6 @@ function createOrder() {
     
     // Tính giá
     let totalPrice = calculateOrderPrice(orderType, pageCount, tableCount);
-    console.log(`Tổng tiền: ${formatCurrency(totalPrice)}`);
     
     const newOrder = {
         id: generateOrderId(),
@@ -474,10 +553,9 @@ function createOrder() {
         fileData: fileData,
         status: 'pending',
         paymentStatus: 'pending',
+        paymentImage: null,
         createdAt: new Date().toISOString()
     };
-    
-    console.log('Đơn hàng mới:', newOrder);
     
     // Lưu đơn hàng
     orders.push(newOrder);
@@ -489,6 +567,10 @@ function createOrder() {
     
     showMessage(`✅ Tạo đơn hàng thành công! Tổng tiền: ${formatCurrency(totalPrice)}`);
     resetOrderForm();
+    
+    // Tự động chuyển đến trang đơn hàng
+    showSection('orders-section');
+    loadOrders();
 }
 
 // Hàm tính giá đơn hàng
@@ -503,29 +585,12 @@ function calculateOrderPrice(orderType, pageCount, tableCount) {
     
     // Thêm phí cho bảng nếu có
     if (tableCount > 0) {
-        price += tableCount * 500; // 500đ mỗi bảng
+        price += tableCount * 500;
     }
     
     return price;
 }
 
-function resetOrderForm() {
-    const orderForm = document.getElementById('order-form');
-    if (orderForm) {
-        orderForm.reset();
-        toggleOrderOptions();
-        generateTableInputs();
-        calculateTotalPrice(); // Reset tính giá
-    } else {
-        // nếu không có form, vẫn xóa các input cá nhân nếu cần
-        const textContent = document.getElementById('text-content');
-        if (textContent) textContent.value = '';
-        generateTableInputs();
-        calculateTotalPrice();
-    }
-}
-
-// ========== TÍNH GIÁ TỰ ĐỘNG ==========
 function calculateTotalPrice() {
     const orderType = document.getElementById('order-type');
     const pageCount = document.getElementById('page-count');
@@ -539,9 +604,22 @@ function calculateTotalPrice() {
     const tables = parseInt(tableCount ? tableCount.value : 0) || 0;
     
     const price = calculateOrderPrice(type, pages, tables);
-    
-    console.log(`Tính giá tự động: ${formatCurrency(price)} (${pages} trang, ${tables} bảng)`);
     totalPrice.textContent = formatCurrency(price);
+}
+
+function resetOrderForm() {
+    const orderForm = document.getElementById('order-form');
+    if (orderForm) {
+        orderForm.reset();
+        toggleOrderOptions();
+        generateTableInputs();
+        calculateTotalPrice();
+    } else {
+        const textContent = document.getElementById('text-content');
+        if (textContent) textContent.value = '';
+        generateTableInputs();
+        calculateTotalPrice();
+    }
 }
 
 function loadOrders() {
@@ -554,7 +632,10 @@ function loadOrders() {
     }
     
     const userOrders = orders.filter(order => order.userId === currentUser.id);
-    
+    displayOrders(userOrders, ordersList);
+}
+
+function displayOrders(userOrders, ordersList) {
     if (userOrders.length === 0) {
         ordersList.innerHTML = '<p>Bạn chưa có đơn hàng nào</p>';
         return;
@@ -571,12 +652,17 @@ function loadOrders() {
                         <p><strong>Ngân hàng:</strong> Vietcombank</p>
                         <p><strong>Số tài khoản:</strong> 1234567890123</p>
                         <p><strong>Chủ tài khoản:</strong> NGUYEN VAN A</p>
-                        <div class="qr-code">
-                            <div class="qr-placeholder">
-                                📱 Mã QR thanh toán sẽ hiển thị ở đây
-                            </div>
+                        <div class="payment-image-upload">
+                            <label>Tải lên ảnh chuyển khoản:</label>
+                            <input type="file" id="payment-image-${order.id}" accept="image/*">
+                            <button onclick="uploadPaymentImage('${order.id}')" class="payment-btn">Tải lên ảnh & Xác nhận</button>
                         </div>
-                        <button onclick="confirmPayment('${order.id}')" class="payment-btn">Đã Chuyển Tiền</button>
+                        ${order.paymentImage ? `
+                            <div class="payment-image-preview">
+                                <p>Ảnh đã tải lên:</p>
+                                <img src="${order.paymentImage}" alt="Ảnh chuyển khoản" style="max-width: 200px;">
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -584,6 +670,12 @@ function loadOrders() {
             paymentSection = `
                 <div class="payment-section paid">
                     <p>✅ Đã thanh toán</p>
+                    ${order.paymentImage ? `
+                        <div class="payment-image-preview">
+                            <p>Ảnh chuyển khoản:</p>
+                            <img src="${order.paymentImage}" alt="Ảnh chuyển khoản" style="max-width: 200px;">
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -623,35 +715,171 @@ function loadOrders() {
                         <button class="danger" onclick="cancelOrder('${order.id}')">Huỷ</button>
                         <button class="secondary" onclick="remakeOrder('${order.id}')">Làm Lại</button>
                     ` : ''}
+                    <button class="secondary" onclick="showCopyOptions('${order.id}', 'customer')">Sao chép</button>
                 </div>
             </div>
         `;
     }).join('');
 }
 
-// ... phần còn lại của mã admin, support, tiện ích giữ nguyên như trước (không đổi tên hàm),
-// nhưng lưu ý: các hàm xử lý admin cũng đã dùng kiểm tra currentUser.role trước khi hành động.
-// (Để file ngắn gọn, các hàm admin/support/utility được giữ nguyên từ mã gốc - nếu bạn muốn
-// tôi dán tiếp phần đó vào file đã sửa luôn, tôi sẽ dán đầy đủ.)
-
-// Các hàm tiện ích
-function confirmPayment(orderId) {
-    const orderIndex = orders.findIndex(order => order.id === orderId);
-    if (orderIndex !== -1) {
-        orders[orderIndex].paymentStatus = 'paid';
-        localStorage.setItem('customerOrders', JSON.stringify(orders));
+function uploadPaymentImage(orderId) {
+    const fileInput = document.getElementById(`payment-image-${orderId}`);
+    if (!fileInput || !fileInput.files[0]) {
+        showMessage('Vui lòng chọn ảnh chuyển khoản');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const imageData = e.target.result;
         
+        // Cập nhật trong orders
+        const orderIndex = orders.findIndex(order => order.id === orderId);
+        if (orderIndex !== -1) {
+            orders[orderIndex].paymentImage = imageData;
+            orders[orderIndex].paymentStatus = 'paid';
+            localStorage.setItem('customerOrders', JSON.stringify(orders));
+        }
+        
+        // Cập nhật trong adminOrders
         const adminOrderIndex = adminOrders.findIndex(order => order.id === orderId);
         if (adminOrderIndex !== -1) {
+            adminOrders[adminOrderIndex].paymentImage = imageData;
             adminOrders[adminOrderIndex].paymentStatus = 'paid';
             localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
         }
         
-        showMessage('✅ Đã xác nhận thanh toán. Đơn hàng sẽ được xử lý.');
+        showMessage('✅ Đã tải lên ảnh chuyển khoản và xác nhận thanh toán');
         loadOrders();
-    } else {
-        showMessage('Không tìm thấy đơn hàng để xác nhận thanh toán');
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+function showCopyOptions(orderId, userType) {
+    const order = userType === 'admin' 
+        ? adminOrders.find(order => order.id === orderId)
+        : orders.find(order => order.id === orderId && order.userId === currentUser.id);
+    
+    if (!order) {
+        showMessage('Không tìm thấy đơn hàng');
+        return;
     }
+    
+    const modal = document.getElementById('copy-options-modal');
+    const copyOptions = document.getElementById('copy-options');
+    
+    if (!modal || !copyOptions) return;
+    
+    copyOptions.innerHTML = `
+        <h3>Chọn nội dung cần sao chép</h3>
+        <div class="copy-option-item">
+            <input type="checkbox" id="copy-content" checked>
+            <label for="copy-content">Nội dung chính</label>
+        </div>
+        <div class="copy-option-item">
+            <input type="checkbox" id="copy-tables" checked>
+            <label for="copy-tables">Nội dung bảng</label>
+        </div>
+        <div class="copy-option-item">
+            <input type="checkbox" id="copy-settings" checked>
+            <label for="copy-settings">Cài đặt in</label>
+        </div>
+        <div class="copy-option-item">
+            <input type="checkbox" id="copy-price" checked>
+            <label for="copy-price">Thông tin giá</label>
+        </div>
+        <div class="form-actions">
+            <button onclick="copySelectedContent('${orderId}', '${userType}')">Sao chép</button>
+        </div>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+function copySelectedContent(orderId, userType) {
+    const order = userType === 'admin' 
+        ? adminOrders.find(order => order.id === orderId)
+        : orders.find(order => order.id === orderId && order.userId === currentUser.id);
+    
+    if (!order) return;
+    
+    const copyContent = document.getElementById('copy-content').checked;
+    const copyTables = document.getElementById('copy-tables').checked;
+    const copySettings = document.getElementById('copy-settings').checked;
+    const copyPrice = document.getElementById('copy-price').checked;
+    
+    let textToCopy = '';
+    
+    if (copyContent) {
+        textToCopy += `ĐƠN HÀNG #${order.id}\n`;
+        if (userType === 'admin') {
+            textToCopy += `Khách hàng: ${order.userName}\n`;
+        }
+        textToCopy += `Loại: ${order.type === 'print' ? 'In ấn' : 'In chữ'}\n`;
+        textToCopy += `Nội dung: ${order.content}\n`;
+    }
+    
+    if (copySettings) {
+        textToCopy += `Cỡ chữ: ${order.fontSize}pt\n`;
+        textToCopy += `Độ đậm: ${getFontWeightText(order.fontWeight)}\n`;
+        textToCopy += `Hướng in: ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}\n`;
+    }
+    
+    if (copyPrice) {
+        textToCopy += `Số trang: ${order.pageCount}\n`;
+        textToCopy += `Số bảng: ${order.tableCount || 0}\n`;
+        textToCopy += `Thành tiền: ${formatCurrency(order.totalPrice)}\n`;
+    }
+    
+    if (copyTables && order.tables && order.tables.length > 0) {
+        textToCopy += `\nCÁC BẢNG:\n`;
+        order.tables.forEach((table, index) => {
+            textToCopy += `\nBảng ${index + 1}: ${table.title}\n`;
+            textToCopy += `Nội dung: ${table.content}\n`;
+        });
+    }
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showMessage('✅ Đã sao chép nội dung đã chọn');
+        }).catch(err => {
+            fallbackCopyText(textToCopy);
+        });
+    } else {
+        fallbackCopyText(textToCopy);
+    }
+    
+    const modal = document.getElementById('copy-options-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function fallbackCopyText(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showMessage('✅ Đã sao chép thông tin đơn hàng');
+        } else {
+            showMessage('❌ Không thể sao chép, vui lòng sao chép thủ công');
+        }
+    } catch (err) {
+        showMessage('❌ Lỗi sao chép: ' + err);
+    }
+    
+    document.body.removeChild(textArea);
 }
 
 function cancelOrder(orderId) {
@@ -699,8 +927,277 @@ function remakeOrder(orderId) {
     }
 }
 
-// ... (các hàm register/login/logout/updateAccountDisplay/sendSupportMessage/loadSupportHistory, admin functions, utils)
-// Bạn giữ nguyên các hàm đó từ mã gốc (tôi đã chỉnh các chỗ có rủi ro null ở những chỗ quan trọng)
+// ========== HỆ THỐNG CHAT HỖ TRỢ ==========
+function loadSupportChat() {
+    const supportChat = document.getElementById('support-chat');
+    if (!supportChat) return;
+    
+    if (!currentUser) {
+        supportChat.innerHTML = '<p>Vui lòng đăng nhập để sử dụng hỗ trợ</p>';
+        return;
+    }
+    
+    // Tìm hoặc tạo chat cho user
+    let chat = supportChats.find(chat => chat.userId === currentUser.id);
+    if (!chat) {
+        chat = {
+            id: generateChatId(),
+            userId: currentUser.id,
+            userName: currentUser.name,
+            messages: [],
+            status: 'active',
+            createdAt: new Date().toISOString()
+        };
+        supportChats.push(chat);
+        localStorage.setItem('supportChats', JSON.stringify(supportChats));
+    }
+    
+    displayChat(chat, supportChat);
+}
+
+function displayChat(chat, container) {
+    container.innerHTML = `
+        <div class="chat-header">
+            <h3>💬 Hỗ trợ trực tuyến</h3>
+            <p>Đang chat với: <strong>Admin</strong></p>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            ${chat.messages.map(msg => `
+                <div class="message ${msg.sender === 'user' ? 'user-message' : 'admin-message'}">
+                    <div class="message-sender">${msg.sender === 'user' ? 'Bạn' : 'Admin'}</div>
+                    <div class="message-content">${msg.content}</div>
+                    <div class="message-time">${formatTime(msg.timestamp)}</div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="chat-input">
+            <textarea id="chat-input-message" placeholder="Nhập tin nhắn của bạn..."></textarea>
+            <button onclick="sendChatMessage()">Gửi</button>
+        </div>
+    `;
+    
+    // Cuộn xuống tin nhắn mới nhất
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+function sendChatMessage() {
+    const messageInput = document.getElementById('chat-input-message');
+    if (!messageInput || !messageInput.value.trim()) {
+        showMessage('Vui lòng nhập tin nhắn');
+        return;
+    }
+    
+    if (!currentUser) return;
+    
+    const chat = supportChats.find(chat => chat.userId === currentUser.id);
+    if (!chat) return;
+    
+    const newMessage = {
+        id: generateMessageId(),
+        sender: 'user',
+        content: messageInput.value.trim(),
+        timestamp: new Date().toISOString()
+    };
+    
+    chat.messages.push(newMessage);
+    localStorage.setItem('supportChats', JSON.stringify(supportChats));
+    
+    messageInput.value = '';
+    loadSupportChat();
+}
+
+function loadAdminSupportChats() {
+    const supportChatsContainer = document.getElementById('support-chats');
+    if (!supportChatsContainer) return;
+    
+    if (!currentUser || currentUser.role !== 'admin') {
+        supportChatsContainer.innerHTML = '<p>Vui lòng đăng nhập với quyền admin</p>';
+        return;
+    }
+    
+    if (supportChats.length === 0) {
+        supportChatsContainer.innerHTML = '<p>Chưa có cuộc trò chuyện nào</p>';
+        return;
+    }
+    
+    supportChatsContainer.innerHTML = `
+        <div class="chats-list">
+            ${supportChats.map(chat => `
+                <div class="chat-item" onclick="openAdminChat('${chat.id}')">
+                    <div class="chat-user-info">
+                        <strong>${chat.userName}</strong>
+                        <span class="chat-status ${chat.status}">${chat.status === 'active' ? 'Đang hoạt động' : 'Đã đóng'}</span>
+                    </div>
+                    <div class="chat-last-message">
+                        ${chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].content : 'Chưa có tin nhắn'}
+                    </div>
+                    <div class="chat-time">
+                        ${chat.messages.length > 0 ? formatTime(chat.messages[chat.messages.length - 1].timestamp) : formatTime(chat.createdAt)}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+        <div id="admin-chat-detail" class="admin-chat-detail"></div>
+    `;
+}
+
+function openAdminChat(chatId) {
+    const chat = supportChats.find(chat => chat.id === chatId);
+    if (!chat) return;
+    
+    const chatDetail = document.getElementById('admin-chat-detail');
+    if (!chatDetail) return;
+    
+    chatDetail.innerHTML = `
+        <div class="chat-header">
+            <h3>💬 Chat với ${chat.userName}</h3>
+            <button onclick="closeAdminChat()" class="secondary">Đóng</button>
+        </div>
+        <div class="chat-messages" id="admin-chat-messages">
+            ${chat.messages.map(msg => `
+                <div class="message ${msg.sender === 'user' ? 'user-message' : 'admin-message'}">
+                    <div class="message-sender">${msg.sender === 'user' ? chat.userName : 'Bạn'}</div>
+                    <div class="message-content">${msg.content}</div>
+                    <div class="message-time">${formatTime(msg.timestamp)}</div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="chat-input">
+            <textarea id="admin-chat-input" placeholder="Nhập tin nhắn phản hồi..."></textarea>
+            <button onclick="sendAdminChatMessage('${chatId}')">Gửi</button>
+        </div>
+    `;
+    
+    // Cuộn xuống tin nhắn mới nhất
+    const chatMessages = document.getElementById('admin-chat-messages');
+    if (chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+function sendAdminChatMessage(chatId) {
+    const messageInput = document.getElementById('admin-chat-input');
+    if (!messageInput || !messageInput.value.trim()) {
+        showMessage('Vui lòng nhập tin nhắn');
+        return;
+    }
+    
+    const chat = supportChats.find(chat => chat.id === chatId);
+    if (!chat) return;
+    
+    const newMessage = {
+        id: generateMessageId(),
+        sender: 'admin',
+        content: messageInput.value.trim(),
+        timestamp: new Date().toISOString()
+    };
+    
+    chat.messages.push(newMessage);
+    localStorage.setItem('supportChats', JSON.stringify(supportChats));
+    
+    messageInput.value = '';
+    openAdminChat(chatId);
+}
+
+function closeAdminChat() {
+    const chatDetail = document.getElementById('admin-chat-detail');
+    if (chatDetail) {
+        chatDetail.innerHTML = '';
+    }
+}
+
+// ========== CÁC HÀM ĐĂNG KÝ/ĐĂNG NHẬP ĐÃ SỬA ==========
+function handleLogin() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    if (!email || !password) {
+        showMessage('Vui lòng điền đầy đủ thông tin');
+        return;
+    }
+    
+    // Kiểm tra admin mặc định
+    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
+        const adminUser = {
+            id: 'admin',
+            name: 'Quản trị viên',
+            email: email,
+            role: 'admin'
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(adminUser));
+        showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
+        
+        // Đảm bảo chuyển hướng ngay lập tức
+        setTimeout(() => {
+            window.location.href = 'admin.html';
+        }, 1000);
+        return;
+    }
+    
+    const user = users.find(u => u.email === email && u.password === password && u.status === 'active');
+    
+    if (user) {
+        if (user.role === 'admin') {
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
+            setTimeout(() => {
+                window.location.href = 'admin.html';
+            }, 1000);
+            return;
+        }
+        
+        currentUser = user;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateAccountDisplay();
+        showMessage('Đăng nhập thành công!');
+        updateAdminLinkVisibility();
+    } else {
+        showMessage('Email hoặc mật khẩu không đúng');
+    }
+}
+
+function handleAdminLogin() {
+    const email = document.getElementById('admin-email').value;
+    const password = document.getElementById('admin-password').value;
+    
+    if (!email || !password) {
+        showMessage('Vui lòng điền đầy đủ thông tin');
+        return;
+    }
+    
+    // Kiểm tra admin mặc định
+    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
+        const adminUser = {
+            id: 'admin',
+            name: 'Quản trị viên',
+            email: email,
+            role: 'admin'
+        };
+        
+        localStorage.setItem('currentUser', JSON.stringify(adminUser));
+        updateAdminAccountDisplay();
+        showMessage('Đăng nhập admin thành công!');
+        updateCustomerLinkVisibility();
+        return;
+    }
+    
+    const user = users.find(u => u.email === email && u.password === password && u.role === 'admin' && u.status === 'active');
+    
+    if (user) {
+        currentUser = user;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateAdminAccountDisplay();
+        showMessage('Đăng nhập admin thành công!');
+        updateCustomerLinkVisibility();
+    } else {
+        showMessage('Thông tin đăng nhập không đúng hoặc không có quyền admin');
+    }
+}
+
 function register() {
     const name = document.getElementById('register-name').value;
     const email = document.getElementById('register-email').value;
@@ -739,54 +1236,6 @@ function register() {
     
     showMessage('Đăng ký thành công! Vui lòng đăng nhập.');
     showLoginForm();
-}
-
-function login() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    
-    console.log('Đang đăng nhập với:', email);
-    
-    if (!email || !password) {
-        showMessage('Vui lòng điền đầy đủ thông tin');
-        return;
-    }
-    
-    // Kiểm tra admin mặc định
-    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
-        currentUser = {
-            id: 'admin',
-            name: 'Quản trị viên',
-            email: email,
-            role: 'admin'
-        };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        showMessage('Đăng nhập admin thành công! Đang chuyển hướng...');
-        setTimeout(() => {
-            window.location.href = 'admin.html';
-        }, 1500);
-        return;
-    }
-    
-    const user = users.find(u => u.email === email && u.password === password && u.status === 'active');
-    
-    if (user) {
-        if (user.role === 'admin') {
-            showMessage('Đây là tài khoản admin. Đang chuyển hướng...');
-            setTimeout(() => {
-                window.location.href = 'admin.html';
-            }, 1500);
-            return;
-        }
-        
-        currentUser = user;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateAccountDisplay();
-        showMessage('Đăng nhập thành công!');
-        updateAdminLinkVisibility();
-    } else {
-        showMessage('Email hoặc mật khẩu không đúng');
-    }
 }
 
 function logout() {
@@ -835,71 +1284,19 @@ function showLoginForm() {
     document.getElementById('register-form').style.display = 'none';
 }
 
-function sendSupportMessage() {
-    if (!currentUser) {
-        showMessage('Vui lòng đăng nhập để gửi yêu cầu hỗ trợ');
-        return;
-    }
-    
-    const message = document.getElementById('support-message').value;
-    if (!message.trim()) {
-        showMessage('Vui lòng nhập nội dung cần hỗ trợ');
-        return;
-    }
-    
-    const newMessage = {
-        id: generateMessageId(),
-        userId: currentUser.id,
-        userName: currentUser.name,
-        message: message,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-    };
-    
-    supportMessages.push(newMessage);
-    localStorage.setItem('supportMessages', JSON.stringify(supportMessages));
-    
-    document.getElementById('support-message').value = '';
-    showMessage('Đã gửi yêu cầu hỗ trợ');
-    loadSupportHistory();
-}
-
-function loadSupportHistory() {
-    const supportHistory = document.getElementById('support-history');
-    if (!supportHistory) return;
-    
-    if (!currentUser) {
-        supportHistory.innerHTML = '<p>Vui lòng đăng nhập để xem lịch sử hỗ trợ</p>';
-        return;
-    }
-    
-    const userMessages = supportMessages.filter(msg => msg.userId === currentUser.id);
-    
-    if (userMessages.length === 0) {
-        supportHistory.innerHTML = '<p>Bạn chưa gửi yêu cầu hỗ trợ nào</p>';
-        return;
-    }
-    
-    supportHistory.innerHTML = userMessages.map(msg => `
-        <div class="order-item">
-            <div class="order-header">
-                <span>Yêu cầu hỗ trợ #${msg.id}</span>
-                <span class="order-status status-${msg.status}">${getStatusText(msg.status)}</span>
-            </div>
-            <div class="order-details">
-                <p><strong>Nội dung:</strong> ${msg.message}</p>
-                <p><strong>Ngày gửi:</strong> ${formatDate(msg.createdAt)}</p>
-            </div>
-        </div>
-    `).join('');
-}
-
 // ========== HÀM ADMIN ==========
 function checkAdminLoginStatus() {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         currentUser = JSON.parse(storedUser);
-        console.log('Admin đã đăng nhập:', currentUser);
+        
+        // Nếu không phải admin đang ở trang admin, chuyển hướng
+        if (currentUser.role !== 'admin') {
+            console.log('Phát hiện người dùng thường ở trang admin, chuyển hướng...');
+            window.location.href = 'index.html';
+            return;
+        }
+        
         updateAdminAccountDisplay();
     }
 }
@@ -908,45 +1305,6 @@ function updateCustomerLinkVisibility() {
     const customerLink = document.querySelector('footer a[href="index.html"]');
     if (customerLink && currentUser) {
         customerLink.style.display = 'none';
-    }
-}
-
-function adminLogin() {
-    const email = document.getElementById('admin-email').value;
-    const password = document.getElementById('admin-password').value;
-    
-    console.log('Admin đang đăng nhập với:', email);
-    
-    if (!email || !password) {
-        showMessage('Vui lòng điền đầy đủ thông tin');
-        return;
-    }
-    
-    if (email === 'fuwun123@gmail.com' && password === 'H@chin123') {
-        currentUser = {
-            id: 'admin',
-            name: 'Quản trị viên',
-            email: email,
-            role: 'admin'
-        };
-        
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateAdminAccountDisplay();
-        showMessage('Đăng nhập admin thành công!');
-        updateCustomerLinkVisibility();
-        return;
-    }
-    
-    const user = users.find(u => u.email === email && u.password === password && u.role === 'admin' && u.status === 'active');
-    
-    if (user) {
-        currentUser = user;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateAdminAccountDisplay();
-        showMessage('Đăng nhập admin thành công!');
-        updateCustomerLinkVisibility();
-    } else {
-        showMessage('Thông tin đăng nhập không đúng hoặc không có quyền admin');
     }
 }
 
@@ -991,12 +1349,16 @@ function loadAdminOrders() {
         return;
     }
     
-    if (adminOrders.length === 0) {
+    displayAdminOrders(adminOrders, ordersList);
+}
+
+function displayAdminOrders(ordersToDisplay, ordersList) {
+    if (ordersToDisplay.length === 0) {
         ordersList.innerHTML = '<p>Chưa có đơn hàng nào</p>';
         return;
     }
     
-    ordersList.innerHTML = adminOrders.map(order => {
+    ordersList.innerHTML = ordersToDisplay.map(order => {
         const user = users.find(u => u.id === order.userId) || { name: order.userName || 'Khách hàng', email: 'N/A' };
         
         let priceSettingsBtn = '';
@@ -1022,13 +1384,19 @@ function loadAdminOrders() {
                     <p><strong>Độ đậm:</strong> ${getFontWeightText(order.fontWeight)}</p>
                     <p><strong>Hướng in:</strong> ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}</p>
                     <p><strong>Ngày tạo:</strong> ${formatDate(order.createdAt)}</p>
+                    ${order.paymentImage ? `
+                        <div class="payment-image-preview">
+                            <p><strong>Ảnh chuyển khoản:</strong></p>
+                            <img src="${order.paymentImage}" alt="Ảnh chuyển khoản" style="max-width: 200px;">
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="order-actions">
                     ${priceSettingsBtn}
                     ${order.fileData ? `
                         <button class="secondary" onclick="downloadFile('${order.id}')">Tải file</button>
                     ` : ''}
-                    <button class="secondary" onclick="copyOrderInfo('${order.id}')">Sao chép</button>
+                    <button class="secondary" onclick="showCopyOptions('${order.id}', 'admin')">Sao chép</button>
                     ${order.status === 'pending' ? `
                         <button onclick="acceptOrder('${order.id}')">Nhận đơn</button>
                         <button class="danger" onclick="cancelOrderAdmin('${order.id}')">Huỷ</button>
@@ -1099,7 +1467,6 @@ function saveSystemPriceSettings() {
     
     showMessage('Đã cập nhật giá hệ thống thành công!');
     
-    // Cập nhật lại hiển thị giá trên trang khách hàng nếu đang mở
     if (!document.querySelector('h1').textContent.includes('ADMIN')) {
         updatePriceDisplay();
         calculateTotalPrice();
@@ -1152,14 +1519,12 @@ function saveAdjustedPrice(orderId) {
         return;
     }
     
-    // Cập nhật trong admin orders
     const adminOrderIndex = adminOrders.findIndex(order => order.id === orderId);
     if (adminOrderIndex !== -1) {
         adminOrders[adminOrderIndex].totalPrice = adjustedPrice;
         localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
     }
     
-    // Cập nhật trong customer orders
     const customerOrderIndex = orders.findIndex(order => order.id === orderId);
     if (customerOrderIndex !== -1) {
         orders[customerOrderIndex].totalPrice = adjustedPrice;
@@ -1186,7 +1551,6 @@ function calculateAutoPrice(orderId) {
         calculatedPrice = printPrices.print + (order.pageCount - 1) * printPrices.extra_page;
     }
     
-    // Thêm phí cho bảng
     if (order.tableCount > 0) {
         calculatedPrice += order.tableCount * 500;
     }
@@ -1214,32 +1578,6 @@ function downloadFile(orderId) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-}
-
-function copyOrderInfo(orderId) {
-    const order = adminOrders.find(order => order.id === orderId);
-    if (!order) return;
-    
-    const orderInfo = `
-ĐƠN HÀNG #${order.id}
-Khách hàng: ${order.userName}
-Loại: ${order.type === 'print' ? 'In ấn' : 'In chữ'}
-Nội dung: ${order.content}
-Số trang: ${order.pageCount}
-Số bảng: ${order.tableCount || 0}
-Thành tiền: ${formatCurrency(order.totalPrice)}
-Cỡ chữ: ${order.fontSize}pt
-Độ đậm: ${getFontWeightText(order.fontWeight)}
-Hướng in: ${order.orientation === 'portrait' ? 'Nằm thẳng' : 'Nằm ngang'}
-Ngày tạo: ${formatDate(order.createdAt)}
-Trạng thái: ${getStatusText(order.status)}
-    `.trim();
-    
-    navigator.clipboard.writeText(orderInfo).then(() => {
-        showMessage('Đã sao chép thông tin đơn hàng');
-    }).catch(() => {
-        showMessage('Không thể sao chép thông tin');
-    });
 }
 
 function acceptOrder(orderId) {
@@ -1416,55 +1754,6 @@ function deleteUser(userId) {
     }
 }
 
-function loadAdminSupport() {
-    const supportMessagesContainer = document.getElementById('support-messages');
-    if (!supportMessagesContainer) return;
-    
-    if (!currentUser || currentUser.role !== 'admin') {
-        supportMessagesContainer.innerHTML = '<p>Vui lòng đăng nhập với quyền admin</p>';
-        return;
-    }
-    
-    if (supportMessages.length === 0) {
-        supportMessagesContainer.innerHTML = '<p>Chưa có tin nhắn hỗ trợ nào</p>';
-        return;
-    }
-    
-    supportMessagesContainer.innerHTML = supportMessages.map(msg => {
-        const user = users.find(u => u.id === msg.userId) || { name: msg.userName || 'Khách hàng', email: 'N/A' };
-        
-        return `
-            <div class="order-item">
-                <div class="order-header">
-                    <span>Yêu cầu hỗ trợ #${msg.id}</span>
-                    <span class="order-status status-${msg.status}">${getStatusText(msg.status)}</span>
-                </div>
-                <div class="order-details">
-                    <p><strong>Khách hàng:</strong> ${user.name} (${user.email})</p>
-                    <p><strong>Nội dung:</strong> ${msg.message}</p>
-                    <p><strong>Ngày gửi:</strong> ${formatDate(msg.createdAt)}</p>
-                </div>
-                <div class="order-actions">
-                    ${msg.status === 'pending' ? `
-                        <button onclick="resolveSupport('${msg.id}')">Đã xử lý</button>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function resolveSupport(messageId) {
-    const msgIndex = supportMessages.findIndex(msg => msg.id === messageId);
-    if (msgIndex !== -1) {
-        supportMessages[msgIndex].status = 'completed';
-        localStorage.setItem('supportMessages', JSON.stringify(supportMessages));
-        
-        showMessage('Đã đánh dấu tin nhắn đã xử lý');
-        loadAdminSupport();
-    }
-}
-
 // ========== HÀM TIỆN ÍCH ==========
 function generateOrderId() {
     return 'ORD' + Date.now();
@@ -1476,6 +1765,10 @@ function generateUserId() {
 
 function generateMessageId() {
     return 'MSG' + Date.now();
+}
+
+function generateChatId() {
+    return 'CHAT' + Date.now();
 }
 
 function getStatusText(status) {
@@ -1501,29 +1794,29 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString('vi-VN');
 }
-// Thêm vào file js của bạn
 
+function formatTime(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('vi-VN');
+}
+
+// ========== ÂM THANH ẨN ==========
 document.addEventListener('DOMContentLoaded', (event) => {
     const sound = document.getElementById("hiddenSound");
 
-    // Hàm xử lý việc phát âm thanh
     function playHiddenSound() {
-        sound.play().then(() => {
-            // Âm thanh bắt đầu phát thành công
-            console.log("Âm thanh đang chạy ẩn!");
-        }).catch(error => {
-            // Nếu vẫn bị lỗi thì in ra console
-            console.error("Không thể phát âm thanh:", error);
-        });
+        if (sound) {
+            sound.play().then(() => {
+                console.log("Âm thanh đang chạy ẩn!");
+            }).catch(error => {
+                console.error("Không thể phát âm thanh:", error);
+            });
+        }
         
-        // Quan trọng: Sau khi click lần đầu thì gỡ bỏ sự kiện này
-        // để tránh mỗi lần click lại phát lại từ đầu.
         document.removeEventListener('click', playHiddenSound);
         document.removeEventListener('touchstart', playHiddenSound);
     }
 
-    // Lắng nghe sự kiện click chuột (trên máy tính)
     document.addEventListener('click', playHiddenSound, { once: true });
-    // Lắng nghe sự kiện chạm tay (trên điện thoại)
     document.addEventListener('touchstart', playHiddenSound, { once: true });
 });
