@@ -1,32 +1,40 @@
 // ========== KẾT NỐI SUPABASE ==========
-// THAY THẾ URL VÀ KEY BẰNG THÔNG TIN CỦA BẠN
-const SUPABASE_URL = 'https://rjvcadzrvoyedajraeyp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqdmNhZHpydm95ZWRhanJhZXlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNTY4ODYsImV4cCI6MjA3OTYzMjg4Nn0.hsauloLzZ0F7qZGjPE6c0iAFjxXGFZdCIbs0aOWdepA';
+const SUPABASE_URL = 'https://gvsbcjhohvrgaowflcwc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2JjamhvaHZyZ2Fvd2ZsY3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNzIyNTYsImV4cCI6MjA3OTY0ODI1Nn0.TMkVz82efXxfOazfhzKuWP-DYqVZY8M60WrtA4O77Xc';
 
 // Khởi tạo Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Biến toàn cục
 let currentUser = null;
-let orders = [];
-let users = [];
 let printPrices = {
     'text': 1000,
     'print': 2000,
     'extra_page': 500
 };
-let supportChats = [];
 
 // Khởi tạo trang
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Đang khởi tạo trang...');
-    
-    // Kiểm tra xem đang ở trang nào
-    const h1 = document.querySelector('h1');
-    const isAdminPage = h1 && h1.textContent && h1.textContent.toUpperCase().includes('ADMIN');
-    
-    // Tải dữ liệu từ Supabase
-    initializeApp().then(() => {
+    initializeApp();
+});
+
+// Khởi tạo ứng dụng
+async function initializeApp() {
+    try {
+        // Kiểm tra trạng thái đăng nhập
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            await loadUserProfile(session.user.id);
+        }
+
+        // Tải giá in
+        await loadPrintPrices();
+        
+        // Kiểm tra trang và khởi tạo
+        const h1 = document.querySelector('h1');
+        const isAdminPage = h1 && h1.textContent && h1.textContent.toUpperCase().includes('ADMIN');
+        
         if (isAdminPage) {
             console.log('Đang ở trang ADMIN');
             initializeAdminPage();
@@ -34,39 +42,62 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Đang ở trang KHÁCH HÀNG');
             initializeCustomerPage();
         }
-    }).catch(error => {
+        
+    } catch (error) {
         console.error('Lỗi khởi tạo:', error);
         showMessage('Lỗi kết nối cơ sở dữ liệu. Vui lòng thử lại.');
-    });
-});
+    }
+}
 
-// Khởi tạo ứng dụng - tải dữ liệu từ Supabase
-async function initializeApp() {
+// Tải thông tin user profile
+async function loadUserProfile(userId) {
     try {
-        // Kiểm tra trạng thái đăng nhập
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            currentUser = {
-                id: session.user.id,
-                email: session.user.email,
-                // Lấy thêm thông tin user từ bảng users
-                ...(await getUserProfile(session.user.id))
-            };
-            console.log('User đã đăng nhập:', currentUser);
-        }
-
-        // Tải giá in từ Supabase
-        await loadPrintPrices();
-        
-        // Tải danh sách users (chỉ cho admin)
-        if (currentUser && currentUser.role === 'admin') {
-            await loadUsersFromSupabase();
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+        if (error) {
+            console.log('Chưa có user profile, tạo mới...');
+            await createUserProfile(userId);
+            return;
         }
         
-        console.log('Khởi tạo ứng dụng thành công');
+        currentUser = data;
+        console.log('User profile:', currentUser);
+        
     } catch (error) {
-        console.error('Lỗi khởi tạo ứng dụng:', error);
-        throw error;
+        console.error('Lỗi tải user profile:', error);
+    }
+}
+
+// Tạo user profile nếu chưa có
+async function createUserProfile(userId) {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        const { data, error } = await supabase
+            .from('users')
+            .insert([
+                {
+                    id: userId,
+                    name: user.email.split('@')[0],
+                    email: user.email,
+                    role: 'customer',
+                    status: 'active'
+                }
+            ])
+            .select()
+            .single();
+            
+        if (error) throw error;
+        
+        currentUser = data;
+        console.log('Đã tạo user profile:', currentUser);
+        
+    } catch (error) {
+        console.error('Lỗi tạo user profile:', error);
     }
 }
 
@@ -239,22 +270,22 @@ function setupAdminEventListeners() {
 
 // ========== HÀM SUPABASE ==========
 
-// Tải giá in từ Supabase
+// Tải giá in từ Supabase - SỬA LẠI TÊN CỘT
 async function loadPrintPrices() {
     try {
         const { data, error } = await supabase
             .from('print_prices')
             .select('*')
-            .order('updated_at', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(1);
             
         if (error) throw error;
         
         if (data && data.length > 0) {
             printPrices = {
-                text: data[0].price_text,
-                print: data[0].price_print,
-                extra_page: data[0].price_extra_page
+                text: data[0].text_price || 1000,           // SỬA: text_price
+                print: data[0].print_price || 2000,         // SỬA: print_price
+                extra_page: data[0].extra_page_price || 500 // SỬA: extra_page_price
             };
         }
         console.log('Đã tải giá in:', printPrices);
@@ -263,41 +294,7 @@ async function loadPrintPrices() {
     }
 }
 
-// Lấy thông tin user profile
-async function getUserProfile(userId) {
-    try {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', userId)
-            .single();
-            
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Lỗi lấy thông tin user:', error);
-        return null;
-    }
-}
-
-// Tải danh sách users từ Supabase
-async function loadUsersFromSupabase() {
-    try {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
-            
-        if (error) throw error;
-        users = data || [];
-        console.log('Đã tải users:', users.length);
-    } catch (error) {
-        console.error('Lỗi tải users:', error);
-        users = [];
-    }
-}
-
-// ========== ĐĂNG KÝ/ĐĂNG NHẬP VỚI SUPABASE AUTH ==========
+// ========== ĐĂNG KÝ/ĐĂNG NHẬP ĐƠN GIẢN ==========
 
 async function handleLogin() {
     const email = document.getElementById('login-email').value;
@@ -309,7 +306,8 @@ async function handleLogin() {
     }
     
     try {
-        // Đăng nhập với Supabase Auth
+        showMessage('Đang đăng nhập...');
+        
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
             password: password
@@ -317,26 +315,20 @@ async function handleLogin() {
         
         if (error) throw error;
         
-        // Lấy thông tin user profile
-        const userProfile = await getUserProfile(data.user.id);
-        
-        currentUser = {
-            id: data.user.id,
-            email: data.user.email,
-            ...userProfile
-        };
+        // Tải user profile
+        await loadUserProfile(data.user.id);
         
         showMessage('Đăng nhập thành công!');
         
-        // Kiểm tra và chuyển hướng nếu là admin
-        if (currentUser.role === 'admin') {
-            setTimeout(() => {
+        // Kiểm tra và chuyển hướng
+        setTimeout(() => {
+            if (currentUser && currentUser.role === 'admin') {
                 window.location.href = 'admin.html';
-            }, 1000);
-        } else {
-            updateAccountDisplay();
-            updateAdminLinkVisibility();
-        }
+            } else {
+                updateAccountDisplay();
+                updateAdminLinkVisibility();
+            }
+        }, 1000);
         
     } catch (error) {
         console.error('Lỗi đăng nhập:', error);
@@ -354,7 +346,8 @@ async function handleAdminLogin() {
     }
     
     try {
-        // Đăng nhập với Supabase Auth
+        showMessage('Đang đăng nhập admin...');
+        
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
             password: password
@@ -362,23 +355,17 @@ async function handleAdminLogin() {
         
         if (error) throw error;
         
-        // Lấy thông tin user profile
-        const userProfile = await getUserProfile(data.user.id);
+        // Tải user profile
+        await loadUserProfile(data.user.id);
         
-        if (userProfile.role !== 'admin') {
+        if (!currentUser || currentUser.role !== 'admin') {
             showMessage('Tài khoản không có quyền admin');
             await supabase.auth.signOut();
             return;
         }
         
-        currentUser = {
-            id: data.user.id,
-            email: data.user.email,
-            ...userProfile
-        };
-        
-        updateAdminAccountDisplay();
         showMessage('Đăng nhập admin thành công!');
+        updateAdminAccountDisplay();
         updateCustomerLinkVisibility();
         
     } catch (error) {
@@ -404,33 +391,32 @@ async function register() {
         return;
     }
     
+    if (password.length < 6) {
+        showMessage('Mật khẩu phải có ít nhất 6 ký tự');
+        return;
+    }
+    
     try {
+        showMessage('Đang đăng ký...');
+        
         // Đăng ký với Supabase Auth
         const { data, error } = await supabase.auth.signUp({
             email: email,
             password: password,
+            options: {
+                data: {
+                    name: name,
+                    phone: phone
+                }
+            }
         });
         
         if (error) throw error;
         
-        // Thêm thông tin vào bảng users
-        const { error: profileError } = await supabase
-            .from('users')
-            .insert([
-                {
-                    id: data.user.id,
-                    name: name,
-                    email: email,
-                    phone: phone,
-                    role: 'customer',
-                    status: 'active'
-                }
-            ]);
-            
-        if (profileError) throw profileError;
-        
-        showMessage('Đăng ký thành công! Vui lòng đăng nhập.');
-        showLoginForm();
+        if (data.user) {
+            showMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.');
+            showLoginForm();
+        }
         
     } catch (error) {
         console.error('Lỗi đăng ký:', error);
@@ -446,9 +432,8 @@ async function logout() {
         showMessage('Đã đăng xuất');
         
         const adminLink = document.querySelector('footer a[href="admin.html"]');
-        if (adminLink) {
-            adminLink.style.display = 'block';
-        }
+        if (adminLink) adminLink.style.display = 'block';
+        
     } catch (error) {
         console.error('Lỗi đăng xuất:', error);
     }
@@ -462,9 +447,8 @@ async function adminLogout() {
         showMessage('Đã đăng xuất');
         
         const customerLink = document.querySelector('footer a[href="index.html"]');
-        if (customerLink) {
-            customerLink.style.display = 'block';
-        }
+        if (customerLink) customerLink.style.display = 'block';
+        
     } catch (error) {
         console.error('Lỗi đăng xuất admin:', error);
     }
@@ -535,12 +519,13 @@ async function createOrder() {
     let totalPrice = calculateOrderPrice(orderType, pageCount, tableCount);
     
     try {
-        // Thêm đơn hàng vào Supabase
+        // Thêm đơn hàng vào Supabase - SỬA TÊN CỘT
         const { data, error } = await supabase
             .from('orders')
             .insert([
                 {
                     user_id: currentUser.id,
+                    user_name: currentUser.name, // THÊM user_name
                     type: orderType,
                     content: content,
                     font_size: fontSize,
@@ -548,7 +533,7 @@ async function createOrder() {
                     orientation: orientation,
                     page_count: pageCount,
                     table_count: tableCount,
-                    tables: tables,
+                    tables_data: tables, // SỬA: tables_data thay vì tables
                     total_price: totalPrice,
                     file_data: fileData,
                     status: 'pending',
@@ -612,10 +597,7 @@ async function loadAdminOrders() {
         // Lấy tất cả đơn hàng từ Supabase
         const { data, error } = await supabase
             .from('orders')
-            .select(`
-                *,
-                users (name, email)
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
             
         if (error) throw error;
@@ -628,7 +610,7 @@ async function loadAdminOrders() {
     }
 }
 
-// ========== CÁC HÀM HIỂN THỊ (giữ nguyên từ code cũ) ==========
+// ========== CÁC HÀM HIỂN THỊ ==========
 
 function displayOrders(userOrders, ordersList) {
     if (userOrders.length === 0) {
@@ -675,10 +657,10 @@ function displayOrders(userOrders, ordersList) {
             `;
         }
         
-        // Hiển thị thông tin bảng nếu có
+        // Hiển thị thông tin bảng nếu có - SỬA: tables_data
         let tablesInfo = '';
-        if (order.tables && order.tables.length > 0) {
-            tablesInfo = order.tables.map((table, index) => `
+        if (order.tables_data && order.tables_data.length > 0) {
+            tablesInfo = order.tables_data.map((table, index) => `
                 <div class="table-info">
                     <p><strong>Bảng ${index + 1}:</strong> ${table.title}</p>
                     <p><em>${table.content}</em></p>
@@ -689,7 +671,7 @@ function displayOrders(userOrders, ordersList) {
         return `
             <div class="order-item">
                 <div class="order-header">
-                    <span class="order-id">Đơn hàng #${order.id}</span>
+                    <span class="order-id">Đơn hàng #${order.id.substring(0, 8)}</span>
                     <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                 </div>
                 <div class="order-details">
@@ -724,8 +706,6 @@ function displayAdminOrders(ordersToDisplay, ordersList) {
     }
     
     ordersList.innerHTML = ordersToDisplay.map(order => {
-        const user = order.users || { name: 'Khách hàng', email: 'N/A' };
-        
         let priceSettingsBtn = '';
         if (order.status === 'pending') {
             priceSettingsBtn = `<button class="secondary" onclick="showPriceSettings('${order.id}')">Điều chỉnh giá</button>`;
@@ -734,12 +714,12 @@ function displayAdminOrders(ordersToDisplay, ordersList) {
         return `
             <div class="order-item">
                 <div class="order-header">
-                    <span class="order-id">Đơn hàng #${order.id}</span>
+                    <span class="order-id">Đơn hàng #${order.id.substring(0, 8)}</span>
                     <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
                     <span class="payment-status ${order.payment_status}">${order.payment_status === 'paid' ? '✅ Đã TT' : '⏳ Chờ TT'}</span>
                 </div>
                 <div class="order-details">
-                    <p><strong>Khách hàng:</strong> ${user.name} (${user.email})</p>
+                    <p><strong>Khách hàng:</strong> ${order.user_name} (${order.user_id})</p>
                     <p><strong>Loại:</strong> ${order.type === 'print' ? 'In ấn' : 'In chữ'}</p>
                     <p><strong>Nội dung:</strong> ${order.content}</p>
                     <p><strong>Số trang:</strong> ${order.page_count}</p>
@@ -776,7 +756,7 @@ function displayAdminOrders(ordersToDisplay, ordersList) {
     }).join('');
 }
 
-// ========== CÁC HÀM QUẢN LÝ ĐƠN HÀNG (cập nhật với Supabase) ==========
+// ========== CÁC HÀM QUẢN LÝ ĐƠN HÀNG ==========
 
 async function uploadPaymentImage(orderId) {
     const fileInput = document.getElementById(`payment-image-${orderId}`);
@@ -887,7 +867,7 @@ async function cancelOrderAdmin(orderId) {
     }
 }
 
-// ========== QUẢN LÝ NGƯỜI DÙNG (cập nhật với Supabase) ==========
+// ========== QUẢN LÝ NGƯỜI DÙNG ==========
 
 async function loadUserStatistics() {
     const usersTable = document.getElementById('users-table');
@@ -902,7 +882,14 @@ async function loadUserStatistics() {
     }
     
     try {
-        await loadUsersFromSupabase();
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+        if (error) throw error;
+        
+        const users = data || [];
         
         if (users.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7">Chưa có người dùng nào</td></tr>';
@@ -914,7 +901,7 @@ async function loadUserStatistics() {
                 <td>${index + 1}</td>
                 <td>${user.name}</td>
                 <td>${user.email}</td>
-                <td>${user.phone}</td>
+                <td>${user.phone || 'N/A'}</td>
                 <td>${user.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}</td>
                 <td>${user.status === 'active' ? 'Hoạt động' : 'Bị khoá'}</td>
                 <td>
@@ -930,42 +917,53 @@ async function loadUserStatistics() {
 }
 
 async function manageUser(userId) {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-    
-    const modal = document.getElementById('user-management-modal');
-    const form = document.getElementById('user-management-form');
-    
-    if (!modal || !form) return;
-    
-    form.innerHTML = `
-        <div class="form-group">
-            <label>Họ tên: ${user.name}</label>
-        </div>
-        <div class="form-group">
-            <label>Email: ${user.email}</label>
-        </div>
-        <div class="form-group">
-            <label>Vai trò:</label>
-            <select id="user-role">
-                <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Khách hàng</option>
-                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Quản trị viên</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Trạng thái:</label>
-            <select id="user-status">
-                <option value="active" ${user.status === 'active' ? 'selected' : ''}>Hoạt động</option>
-                <option value="locked" ${user.status === 'locked' ? 'selected' : ''}>Bị khoá</option>
-            </select>
-        </div>
-        <div class="form-actions">
-            <button onclick="saveUserChanges('${userId}')">Lưu thay đổi</button>
-            <button class="danger" onclick="deleteUser('${userId}')">Xoá tài khoản</button>
-        </div>
-    `;
-    
-    modal.style.display = 'block';
+    try {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+        if (error) throw error;
+        
+        const modal = document.getElementById('user-management-modal');
+        const form = document.getElementById('user-management-form');
+        
+        if (!modal || !form) return;
+        
+        form.innerHTML = `
+            <div class="form-group">
+                <label>Họ tên: ${user.name}</label>
+            </div>
+            <div class="form-group">
+                <label>Email: ${user.email}</label>
+            </div>
+            <div class="form-group">
+                <label>Vai trò:</label>
+                <select id="user-role">
+                    <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Khách hàng</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Quản trị viên</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Trạng thái:</label>
+                <select id="user-status">
+                    <option value="active" ${user.status === 'active' ? 'selected' : ''}>Hoạt động</option>
+                    <option value="locked" ${user.status === 'locked' ? 'selected' : ''}>Bị khoá</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button onclick="saveUserChanges('${userId}')">Lưu thay đổi</button>
+                <button class="danger" onclick="deleteUser('${userId}')">Xoá tài khoản</button>
+            </div>
+        `;
+        
+        modal.style.display = 'block';
+        
+    } catch (error) {
+        console.error('Lỗi quản lý user:', error);
+        showMessage('Lỗi tải thông tin user');
+    }
 }
 
 async function saveUserChanges(userId) {
@@ -1022,7 +1020,7 @@ async function deleteUser(userId) {
     }
 }
 
-// ========== CÀI ĐẶT GIÁ (cập nhật với Supabase) ==========
+// ========== CÀI ĐẶT GIÁ ==========
 
 async function showPriceSettings() {
     const modal = document.getElementById('user-management-modal');
@@ -1069,9 +1067,9 @@ async function saveSystemPriceSettings() {
             .from('print_prices')
             .insert([
                 {
-                    price_text: priceText,
-                    price_print: pricePrint,
-                    price_extra_page: priceExtra
+                    text_price: priceText,           // SỬA: text_price
+                    print_price: pricePrint,         // SỬA: print_price
+                    extra_page_price: priceExtra     // SỬA: extra_page_price
                 }
             ]);
             
@@ -1102,7 +1100,7 @@ async function saveSystemPriceSettings() {
     }
 }
 
-// ========== CÁC HÀM HỖ TRỢ (giữ nguyên) ==========
+// ========== CÁC HÀM HỖ TRỢ ==========
 
 function showSection(sectionId) {
     document.querySelectorAll('.section').forEach(section => {
@@ -1273,26 +1271,20 @@ function resetOrderForm() {
 
 function checkLoginStatus() {
     if (currentUser) {
-        // Nếu là admin đang ở trang khách hàng, chuyển hướng
         if (currentUser.role === 'admin') {
-            console.log('Phát hiện admin ở trang khách hàng, chuyển hướng...');
             window.location.href = 'admin.html';
             return;
         }
-        
         updateAccountDisplay();
     }
 }
 
 function checkAdminLoginStatus() {
     if (currentUser) {
-        // Nếu không phải admin đang ở trang admin, chuyển hướng
         if (currentUser.role !== 'admin') {
-            console.log('Phát hiện người dùng thường ở trang admin, chuyển hướng...');
             window.location.href = 'index.html';
             return;
         }
-        
         updateAdminAccountDisplay();
     }
 }
@@ -1311,8 +1303,8 @@ function updateAccountDisplay() {
         userDetails.innerHTML = `
             <p><strong>Họ tên:</strong> ${currentUser.name}</p>
             <p><strong>Email:</strong> ${currentUser.email}</p>
-            <p><strong>SĐT:</strong> ${currentUser.phone}</p>
-            <p><strong>Vai trò:</strong> Khách hàng</p>
+            <p><strong>SĐT:</strong> ${currentUser.phone || 'Chưa cập nhật'}</p>
+            <p><strong>Vai trò:</strong> ${currentUser.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}</p>
         `;
     } else if (loginForm && registerForm && accountInfo) {
         loginForm.style.display = 'block';
@@ -1374,10 +1366,7 @@ function searchOrders(searchTerm) {
         loadOrders();
         return;
     }
-    
-    // Tìm kiếm sẽ được xử lý ở client-side
-    // Trong thực tế, bạn có thể triển khai tìm kiếm server-side
-    loadOrders(); // Tạm thời reload tất cả
+    loadOrders();
 }
 
 function searchAdminOrders(searchTerm) {
@@ -1386,9 +1375,7 @@ function searchAdminOrders(searchTerm) {
         loadAdminOrders();
         return;
     }
-    
-    // Tìm kiếm sẽ được xử lý ở client-side
-    loadAdminOrders(); // Tạm thời reload tất cả
+    loadAdminOrders();
 }
 
 function getStatusText(status) {
@@ -1419,9 +1406,6 @@ function formatTime(dateString) {
     const date = new Date(dateString);
     return date.toLocaleTimeString('vi-VN');
 }
-
-// Các hàm remakeOrder, showCopyOptions, downloadFile, v.v... 
-// có thể được thêm tương tự như trong code gốc
 
 // ========== ÂM THANH ẨN ==========
 document.addEventListener('DOMContentLoaded', (event) => {
