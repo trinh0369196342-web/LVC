@@ -38,7 +38,6 @@
   </header>
 
   <main>
-    <!-- Section ĐƠN HÀNG -->
     <section id="orders-section" class="section active">
       <h2>Quản Lý Đơn Hàng</h2>
       <div class="section-info">
@@ -48,11 +47,9 @@
         <input type="text" id="search-orders" placeholder="Tìm kiếm theo tên khách hàng...">
       </div>
       <div id="orders-list">
-        <!-- Danh sách đơn hàng sẽ được hiển thị ở đây -->
-      </div>
+        </div>
     </section>
 
-    <!-- Section THỐNG KÊ TÀI KHOẢN -->
     <section id="statistics-section" class="section">
       <h2>Thống Kê Tài Khoản</h2>
       <div class="section-info">
@@ -72,24 +69,20 @@
             </tr>
           </thead>
           <tbody>
-            <!-- Dữ liệu người dùng sẽ được hiển thị ở đây -->
-          </tbody>
+            </tbody>
         </table>
       </div>
     </section>
 
-    <!-- Section HỖ TRỢ -->
     <section id="support-section" class="section">
       <h2>Hỗ Trợ Khách Hàng</h2>
       <div class="section-info">
         <p>Xử lý các yêu cầu hỗ trợ từ khách hàng</p>
       </div>
       <div id="support-chats">
-        <!-- Danh sách cuộc trò chuyện sẽ được hiển thị ở đây -->
-      </div>
+        </div>
     </section>
 
-    <!-- Section THÔNG TIN TÀI KHOẢN -->
     <section id="account-section" class="section">
       <div id="admin-login-form">
         <h2>Đăng Nhập Admin</h2>
@@ -112,8 +105,7 @@
       <div id="admin-account-info" style="display:none;">
         <h2>Thông Tin Tài Khoản Admin</h2>
         <div id="admin-details">
-          <!-- Thông tin admin sẽ được hiển thị ở đây -->
-        </div>
+          </div>
         <div class="admin-actions">
           <button onclick="showPriceSettings()" class="secondary">Cài đặt giá in</button>
           <button type="button" id="admin-logout-btn" class="danger">Đăng Xuất</button>
@@ -121,17 +113,14 @@
       </div>
     </section>
 
-    <!-- Modal quản lý tài khoản -->
     <div id="user-management-modal" class="modal">
       <div class="modal-content">
         <span class="close">&times;</span>
         <div id="user-management-form">
-          <!-- Form quản lý tài khoản sẽ được hiển thị ở đây -->
-        </div>
+          </div>
       </div>
     </div>
 
-    <!-- Modal hiển thị thông báo -->
     <div id="message-modal" class="modal">
       <div class="modal-content">
         <span class="close">&times;</span>
@@ -139,13 +128,11 @@
       </div>
     </div>
 
-    <!-- Modal tùy chọn sao chép -->
     <div id="copy-options-modal" class="modal">
       <div class="modal-content">
         <span class="close">&times;</span>
         <div id="copy-options">
-          <!-- Các tùy chọn sao chép sẽ được hiển thị ở đây -->
-        </div>
+          </div>
       </div>
     </div>
   </main>
@@ -162,10 +149,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+  // **Vui lòng thay thế các giá trị sau bằng URL và API Key thực của dự án Supabase của bạn.**
   const SUPABASE_URL = 'https://dgenfstgozszveobuwpu.supabase.co'; 
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnZW5mc3Rnb3pzenZlb2J1d3B1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5OTY4MjUsImV4cCI6MjA3OTU3MjgyNX0.AWOWngCZNT_uK4RiDjGkZlu3ApallSg39rayroln4tg';
 
-  // Tạo biến kết nối toàn cục 'supabase'
+  // Tạo biến kết nối client toàn cục 'supabase'
+  // Biến này sẽ ghi đè lên biến 'supabase' của thư viện để tiện sử dụng.
   const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   
   console.log("Đã kết nối Supabase thành công!");
