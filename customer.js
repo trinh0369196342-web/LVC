@@ -1,7 +1,7 @@
 // ========== KẾT NỐI SUPABASE ==========
 // THAY THẾ URL VÀ KEY BẰNG THÔNG TIN CỦA BẠN
-const SUPABASE_URL = 'https://tomeylagqhdokwcfuwuy.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvbWV5bGFncWhkb2t3Y2Z1d3V5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNDQxNDAsImV4cCI6MjA3OTYyMDE0MH0.NPGm_cEp5g5oRkLFQUdkysboTR5DHjaNanAPA7HsuPg';
+const SUPABASE_URL = 'https://rjvcadzrvoyedajraeyp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqdmNhZHpydm95ZWRhanJhZXlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNTY4ODYsImV4cCI6MjA3OTYzMjg4Nn0.hsauloLzZ0F7qZGjPE6c0iAFjxXGFZdCIbs0aOWdepA';
 
 // Khởi tạo Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
