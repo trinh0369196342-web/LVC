@@ -1583,6 +1583,3 @@ document.addEventListener('DOMContentLoaded', (event) => {
     document.addEventListener('click', playHiddenSound, { once: true });
     document.addEventListener('touchstart', playHiddenSound, { once: true });
 });
-
-// Tạo admin user khi cần (chạy trong console)
-// createAdminUser();
