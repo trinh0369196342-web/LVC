@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Fix Admin Account</h1>
+  
+  <div>
+    <h2>Đăng nhập Admin</h2>
+    <input type="email" id="email" placeholder="Email" value="fuwun123@gmail.com">
+    <input type="password" id="password" placeholder="Password" value="H@chin123">
+    <button onclick="loginAndFix()">Đăng nhập & Fix</button>
+  </div>
+
+  <div id="result" style="margin-top: 20px;"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://gvsbcjhohvrgaowflcwc.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2JjamhvaHZyZ2Fvd2ZsY3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNzIyNTYsImV4cCI6MjA3OTY0ODI1Nn0.TMkVz82efXxfOazfhzKuWP-DYqVZY8M60WrtA4O77Xc';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function loginAndFix() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const resultDiv = document.getElementById('result');
+
+      try {
+        resultDiv.innerHTML = 'Đang đăng nhập...';
+        
+        // Đăng nhập
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+        if (error) throw error;
+
+        resultDiv.innerHTML = '✅ Đăng nhập thành công!<br>Đang tạo/fix user profile...';
+
+        const userId = data.user.id;
+        
+        // Kiểm tra xem user profile đã tồn tại chưa
+        const { data: existingUser, error: checkError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (checkError && checkError.code === 'PGRST116') {
+          // User profile chưa tồn tại, tạo mới
+          resultDiv.innerHTML += '<br>👤 User profile chưa tồn tại, đang tạo mới...';
+          
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: userId,
+                name: 'Quản trị viên',
+                email: email,
+                phone: '0123456789',
+                role: 'admin',
+                status: 'active'
+              }
+            ])
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          
+          resultDiv.innerHTML += '<br>✅ Đã tạo user profile với quyền ADMIN!';
+        } else if (existingUser) {
+          // User profile đã tồn tại, cập nhật thành admin
+          resultDiv.innerHTML += '<br>👤 User profile đã tồn tại, đang cập nhật thành admin...';
+          
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ 
+              role: 'admin',
+              name: 'Quản trị viên'
+            })
+            .eq('id', userId);
+
+          if (updateError) throw updateError;
+          
+          resultDiv.innerHTML += '<br>✅ Đã cập nhật user thành ADMIN!';
+        }
+
+        resultDiv.innerHTML += '<br><br>🎉 Hoàn thành! Giờ hãy:';
+        resultDiv.innerHTML += '<br>1. Mở <a href="admin.html" target="_blank">admin.html</a>';
+        resultDiv.innerHTML += '<br>2. Đăng nhập lại với email và password trên';
+        resultDiv.innerHTML += '<br>3. Kiểm tra xem đã vào được trang admin chưa';
+
+      } catch (error) {
+        resultDiv.innerHTML = '❌ Lỗi: ' + error.message;
+        console.error('Error:', error);
+      }
+    }
+  </script>
+</body>
+</html>
