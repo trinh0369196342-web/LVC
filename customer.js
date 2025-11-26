@@ -25,6 +25,7 @@ async function initializeApp() {
         // Kiểm tra trạng thái đăng nhập
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+            console.log('Đã đăng nhập:', session.user.email);
             await loadUserProfile(session.user.id);
         }
 
@@ -82,8 +83,9 @@ async function createUserProfile(userId) {
             .insert([
                 {
                     id: userId,
-                    name: user.email.split('@')[0],
+                    name: user.user_metadata?.name || user.email.split('@')[0],
                     email: user.email,
+                    phone: user.user_metadata?.phone || '',
                     role: 'customer',
                     status: 'active'
                 }
@@ -451,55 +453,6 @@ async function adminLogout() {
         
     } catch (error) {
         console.error('Lỗi đăng xuất admin:', error);
-    }
-}
-
-// ========== TẠO ADMIN USER TỰ ĐỘNG ==========
-async function createAdminUser() {
-    try {
-        // Đăng ký admin user
-        const { data, error } = await supabase.auth.signUp({
-            email: 'fuwun123@gmail.com',
-            password: 'H@chin123',
-            options: {
-                data: {
-                    name: 'Quản trị viên'
-                }
-            }
-        });
-        
-        if (error) {
-            // Nếu user đã tồn tại, đăng nhập và set role
-            if (error.message.includes('already registered')) {
-                const { data: loginData } = await supabase.auth.signInWithPassword({
-                    email: 'fuwun123@gmail.com',
-                    password: 'H@chin123'
-                });
-                
-                if (loginData.user) {
-                    // Set role admin
-                    const { error: updateError } = await supabase
-                        .from('users')
-                        .update({ role: 'admin' })
-                        .eq('id', loginData.user.id);
-                        
-                    if (!updateError) {
-                        console.log('Đã set role admin thành công');
-                        showMessage('Đã tạo admin user thành công!');
-                    }
-                }
-            }
-            return;
-        }
-        
-        if (data.user) {
-            console.log('Đã tạo admin user thành công');
-            showMessage('Đã tạo admin user thành công!');
-        }
-        
-    } catch (error) {
-        console.error('Lỗi tạo admin user:', error);
-        showMessage('Lỗi tạo admin user: ' + error.message);
     }
 }
 
@@ -1549,17 +1502,14 @@ function formatTime(dateString) {
 // ========== CÁC HÀM BỔ SUNG ==========
 
 function remakeOrder(orderId) {
-    // Implementation for remake order
     showMessage('Tính năng đang được phát triển');
 }
 
 function showCopyOptions(orderId, userType) {
-    // Implementation for copy options
     showMessage('Tính năng đang được phát triển');
 }
 
 function downloadFile(orderId) {
-    // Implementation for download file
     showMessage('Tính năng đang được phát triển');
 }
 
