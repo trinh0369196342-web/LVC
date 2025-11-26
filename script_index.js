@@ -85,13 +85,9 @@ async function loadProfile() {
             
             if(data.avatar_url) document.getElementById('profile-avatar').src = data.avatar_url;
 
-        if (data.role === 'admin') {
-    // Nó phải hiện hộp thoại hỏi bạn
-    if(confirm('Phát hiện quyền Admin. Bạn có muốn sang trang Quản trị không?')) {
-        window.location.href = 'admin.html';
-    }
-}
-
+            if (data.role === 'admin') {
+               if(confirm('Bạn là Admin. Chuyển sang trang quản trị?')) window.location.href = 'admin.html';
+            }
         }
     } catch (err) {
         console.error("Lỗi load profile:", err);
