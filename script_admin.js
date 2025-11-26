@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: script_admin.js (BẢN FULL - ĐÃ CÓ CHAT)
+// CẤU HÌNH SUPABASE
 // ============================================================
 const SUPABASE_URL = 'https://gvsbcjhohvrgaowflcwc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2JjamhvaHZyZ2Fvd2ZsY3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNzIyNTYsImV4cCI6MjA3OTY0ODI1Nn0.TMkVz82efXxfOazfhzKuWP-DYqVZY8M60WrtA4O77Xc';
@@ -12,9 +12,11 @@ let allOrders = [];
 let displayedOrders = []; 
 let editingOrderId = null; 
 let originalPriceRef = 0; 
-let currentChatUserId = null; // ID khách hàng đang chat
+let currentChatUserId = null;
 
-// 1. INIT ADMIN
+// ============================================================
+// 1. INIT & AUTH
+// ============================================================
 async function initAdmin() {
     try {
         const { data: { user } } = await _supabase.auth.getUser();
@@ -28,10 +30,12 @@ async function initAdmin() {
         }
 
         document.getElementById('admin-name').innerText = profile.full_name || user.email;
+        
+        // Tải dữ liệu ban đầu
         loadOrders();
-        setupRealtime(); // Lắng nghe đơn hàng và tin nhắn
+        setupRealtime();
 
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error("Lỗi khởi tạo:", err); }
 }
 initAdmin();
 
@@ -53,45 +57,129 @@ function switchView(viewId) {
 
     if(viewId === 'users') loadUsers();
     if(viewId === 'settings') loadSettingsAdmin();
-    if(viewId === 'chat') loadChatUsers(); // Tải danh sách người nhắn
+    if(viewId === 'chat') loadChatUsers();
 }
 
-// 2. LOGIC CHAT ADMIN (TÍNH NĂNG MỚI)
+// ============================================================
+// 2. QUẢN LÝ ĐƠN HÀNG (ORDERS)
+// ============================================================
+async function loadOrders() {
+    const { data } = await _supabase.from('orders').select(`*, profiles(full_name, email)`).order('created_at', { ascending: false });
+    if (data) { allOrders = data; displayedOrders = data; renderOrders(data); }
+}
+
+function renderOrders(orders) {
+    const tbody = document.getElementById('orders-table-body');
+    tbody.innerHTML = '';
+
+    if(orders.length === 0) document.getElementById('no-result').classList.remove('hidden');
+    else document.getElementById('no-result').classList.add('hidden');
+
+    const statusDict = { 
+        'pending': 'bg-yellow-100 text-yellow-800', 
+        'processing': 'bg-blue-100 text-blue-800', 
+        'payment_pending': 'bg-orange-100 text-orange-800', 
+        'paid': 'bg-green-50 text-green-600', 
+        'completed': 'bg-green-100 text-green-800', 
+        'cancelled': 'bg-gray-200 text-gray-500' 
+    };
+
+    orders.forEach(o => {
+        const tr = document.createElement('tr'); tr.className = "border-b hover:bg-gray-50 group";
+        
+        // --- LOGIC NÚT TẢI FILE (FIXED) ---
+        let details = '';
+        if(o.type === 'file') {
+            // Kiểm tra link
+            const isLink = o.file_url && o.file_url.startsWith('http');
+            // Nếu là link thật -> target _blank, nếu demo -> alert
+            const linkAttr = isLink ? `href="${o.file_url}" target="_blank"` : `href="#" onclick="alert('Đây là file demo, không tải được!')"`;
+            
+            details = `
+                <div class="text-sm">
+                    <span class="font-bold text-blue-600">[IN FILE]</span> 
+                    <a ${linkAttr} class="text-blue-600 hover:underline ml-1 font-bold">⬇ TẢI XUỐNG</a><br>
+                    • ${o.page_count} trang, Cỡ ${o.font_size}<br>
+                    • ${o.is_landscape ? 'Ngang' : 'Dọc'}
+                </div>`;
+        } else {
+            details = `<div class="text-sm"><span class="font-bold text-green-600">[IN CHỮ]</span> (${o.board_count} bảng)<br>• P.${o.room_number || '?'}</div>`;
+        }
+
+        let actions = `<div class="flex flex-col gap-1">`;
+        if (o.status === 'pending') actions += `<button onclick="updateStatus('${o.id}', 'processing')" class="bg-blue-600 text-white px-2 rounded text-xs">Nhận</button><button onclick="updateStatus('${o.id}', 'cancelled')" class="bg-gray-400 text-white px-2 rounded text-xs">Hủy</button>`;
+        else if (o.status === 'processing') actions += `<button onclick="openPriceModal('${o.id}', ${o.original_price}, ${o.adjustment_fee})" class="bg-yellow-500 text-white px-2 rounded text-xs">Giá</button><button onclick="requestPayment('${o.id}', '${o.user_id}', ${o.final_price})" class="bg-indigo-600 text-white px-2 rounded text-xs">QR</button>`;
+        else if (o.status === 'payment_pending') actions += `<button onclick="updateStatus('${o.id}', 'paid')" class="bg-green-500 text-white px-2 rounded text-xs">Đã Trả</button>`;
+        else if (o.status === 'paid') actions += `<button onclick="updateStatus('${o.id}', 'completed')" class="bg-green-700 text-white px-2 rounded text-xs">Xong</button>`;
+        actions += `<button onclick="deleteOrder('${o.id}')" class="text-red-500 text-xs">Xóa</button></div>`;
+
+        let priceDisplay = `<div class="font-bold">${formatCurrency(o.final_price)}</div>`;
+        if(o.adjustment_fee !== 0) priceDisplay += `<div class="text-xs text-red-500 italic">(${o.adjustment_fee > 0 ? '+' : ''}${formatCurrency(o.adjustment_fee)})</div>`;
+
+        tr.innerHTML = `<td class="p-4 text-xs">${o.id.slice(0,6)}<br>${formatDate(o.created_at)}</td><td class="p-4 font-medium">${o.profiles?.full_name || '...'}<br><span class="text-xs text-gray-500">${o.profiles?.email}</span></td><td class="p-4 text-sm">${details}</td><td class="p-4 font-bold">${priceDisplay}</td><td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold ${statusDict[o.status] || ''}">${o.status}</span></td><td class="p-4">${actions}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function handleSearch() {
+    const term = document.getElementById('search-input').value.toLowerCase();
+    displayedOrders = allOrders.filter(o => (o.profiles?.full_name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term));
+    renderOrders(displayedOrders);
+}
+function filterOrders(status) {
+    document.getElementById('search-input').value = ''; 
+    if (status === 'all') displayedOrders = allOrders;
+    else displayedOrders = allOrders.filter(o => o.status === status);
+    renderOrders(displayedOrders);
+}
+
+async function updateStatus(id, status) { await _supabase.from('orders').update({ status }).eq('id', id); }
+async function deleteOrder(id) { if(confirm("Xóa?")) { await _supabase.from('orders').delete().eq('id', id); allOrders = allOrders.filter(o => o.id !== id); handleSearch(); } }
+function openPriceModal(id, org, fee) { editingOrderId = id; originalPriceRef = org; document.getElementById('modal-org-price').innerText = formatCurrency(org); document.getElementById('modal-new-price').value = org + fee; document.getElementById('modal-price').classList.remove('hidden'); }
+async function confirmUpdatePrice() { const fee = parseInt(document.getElementById('modal-new-price').value) - originalPriceRef; await _supabase.from('orders').update({ adjustment_fee: fee, adjustment_reason: document.getElementById('modal-reason').value }).eq('id', editingOrderId); document.getElementById('modal-price').classList.add('hidden'); }
+async function requestPayment(id, uid, amt) { if(confirm("Gửi QR?")) { await _supabase.from('orders').update({ status: 'payment_pending' }).eq('id', id); await _supabase.from('messages').insert({ sender_id: (await _supabase.auth.getUser()).data.user.id, receiver_id: uid, content: `Thanh toán: ${formatCurrency(amt)}`, is_admin: true }); alert("Đã gửi!"); } }
+
+// ============================================================
+// 3. CHAT SYSTEM (ADMIN)
+// ============================================================
 async function loadChatUsers() {
-    // Lấy tất cả tin nhắn để tìm ra danh sách những người đã nhắn tin
-    // Cách tối ưu: Lấy distinct sender_id từ messages
-    const { data: messages } = await _supabase.from('messages').select('sender_id, created_at').order('created_at', { ascending: false });
+    // Lấy tất cả tin nhắn
+    const { data: messages, error } = await _supabase
+        .from('messages')
+        .select('sender_id, receiver_id, created_at')
+        .order('created_at', { ascending: false });
     
-    if(!messages) return;
-
-    // Lọc ra các ID duy nhất (trừ tin của admin)
-    const uniqueSenderIds = [...new Set(messages.map(m => m.sender_id))];
-    const adminUser = await _supabase.auth.getUser();
-    const adminId = adminUser.data.user.id;
-    
-    // Loại bỏ ID của chính admin ra khỏi danh sách
-    const clientIds = uniqueSenderIds.filter(id => id !== adminId);
-
-    // Lấy thông tin chi tiết của các khách hàng này
-    const { data: profiles } = await _supabase.from('profiles').select('*').in('id', clientIds);
-    
-    const listContainer = document.getElementById('chat-user-list');
-    listContainer.innerHTML = '';
-
-    if(!profiles || profiles.length === 0) {
-        listContainer.innerHTML = '<p class="p-4 text-gray-500 text-center">Chưa có tin nhắn nào.</p>';
+    if(error || !messages || messages.length === 0) {
+        document.getElementById('chat-user-list').innerHTML = '<p class="p-4 text-gray-500 text-center">Chưa có tin nhắn nào.</p>';
         return;
     }
+
+    const adminId = (await _supabase.auth.getUser()).data.user.id;
+    
+    // Lọc ra các ID người dùng (khác ID admin)
+    let userIds = new Set();
+    messages.forEach(m => {
+        if (m.sender_id !== adminId) userIds.add(m.sender_id);
+        if (m.receiver_id !== adminId && m.receiver_id) userIds.add(m.receiver_id);
+    });
+
+    const uniqueIds = Array.from(userIds);
+    if (uniqueIds.length === 0) return;
+
+    // Lấy thông tin user
+    const { data: profiles } = await _supabase.from('profiles').select('*').in('id', uniqueIds);
+    const listContainer = document.getElementById('chat-user-list');
+    listContainer.innerHTML = '';
 
     profiles.forEach(p => {
         const div = document.createElement('div');
         div.className = "p-3 border-b hover:bg-blue-50 cursor-pointer flex items-center gap-3";
         div.onclick = () => openChatWithUser(p);
         div.innerHTML = `
-            <img src="${p.avatar_url || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-full bg-gray-300">
-            <div>
-                <div class="font-bold text-sm">${p.full_name || 'Khách hàng'}</div>
-                <div class="text-xs text-gray-500">${p.email}</div>
+            <img src="${p.avatar_url || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-full bg-gray-300 object-cover">
+            <div class="overflow-hidden">
+                <div class="font-bold text-sm truncate">${p.full_name || 'Khách hàng'}</div>
+                <div class="text-xs text-gray-500 truncate">${p.email}</div>
             </div>
         `;
         listContainer.appendChild(div);
@@ -105,12 +193,10 @@ async function openChatWithUser(userProfile) {
     document.getElementById('admin-chat-btn').disabled = false;
     document.getElementById('admin-chat-input').focus();
 
-    // Tải tin nhắn 2 chiều: (Sender = Khách AND Receiver = Admin) OR (Sender = Admin AND Receiver = Khách)
-    // Tuy nhiên schema đơn giản hiện tại: Sender là người gửi.
-    // Ta lấy tất cả tin có liên quan đến ID khách này.
+    // Load tin nhắn
     const { data: msgs } = await _supabase.from('messages')
         .select('*')
-        .or(`sender_id.eq.${currentChatUserId},receiver_id.eq.${currentChatUserId}`) // Lấy tin họ gửi HOẶC tin mình gửi cho họ
+        .or(`sender_id.eq.${currentChatUserId},receiver_id.eq.${currentChatUserId}`)
         .order('created_at', { ascending: true });
 
     const container = document.getElementById('admin-chat-messages');
@@ -121,8 +207,7 @@ async function openChatWithUser(userProfile) {
 function appendAdminMessage(msg) {
     const container = document.getElementById('admin-chat-messages');
     const div = document.createElement('div');
-    // Nếu sender_id = currentChatUserId thì là Khách nhắn -> Bên trái
-    // Nếu không phải -> Là Admin nhắn -> Bên phải
+    // Nếu sender là khách (trùng ID đang chat) -> Trái. Còn lại -> Phải
     const isCustomer = msg.sender_id === currentChatUserId;
     
     div.className = `flex ${isCustomer ? 'justify-start' : 'justify-end'}`;
@@ -146,10 +231,9 @@ async function sendAdminReply() {
 
     const adminId = (await _supabase.auth.getUser()).data.user.id;
 
-    // Gửi tin nhắn kèm receiver_id (QUAN TRỌNG ĐỂ BÊN KHÁCH NHẬN ĐƯỢC ĐÚNG)
     const { error } = await _supabase.from('messages').insert({
         sender_id: adminId,
-        receiver_id: currentChatUserId, // Gửi đích danh cho khách này
+        receiver_id: currentChatUserId,
         content: text,
         is_admin: true
     });
@@ -158,72 +242,80 @@ async function sendAdminReply() {
     else input.value = '';
 }
 
-// 3. ORDERS & REALTIME
-async function loadOrders() {
-    const { data } = await _supabase.from('orders').select(`*, profiles(full_name, email)`).order('created_at', { ascending: false });
-    if (data) { allOrders = data; displayedOrders = data; renderOrders(data); }
-}
+// ============================================================
+// 4. QUẢN LÝ TÀI KHOẢN (USERS)
+// ============================================================
+async function loadUsers() {
+    // Thêm xử lý lỗi chi tiết
+    const { data: users, error } = await _supabase.from('profiles').select('*').order('created_at');
+    
+    if(error) {
+        console.error("Lỗi tải user:", error);
+        document.getElementById('users-table-body').innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Lỗi tải dữ liệu (Xem Console). Hãy chạy SQL phân quyền lại.</td></tr>`;
+        return;
+    }
 
-function renderOrders(orders) {
-    const tbody = document.getElementById('orders-table-body');
+    const tbody = document.getElementById('users-table-body');
     tbody.innerHTML = '';
-    if(orders.length === 0) document.getElementById('no-result').classList.remove('hidden');
-    else document.getElementById('no-result').classList.add('hidden');
 
-    const statusDict = { 'pending': 'bg-yellow-100 text-yellow-800', 'processing': 'bg-blue-100 text-blue-800', 'payment_pending': 'bg-orange-100 text-orange-800', 'paid': 'bg-green-50 text-green-600', 'completed': 'bg-green-100 text-green-800', 'cancelled': 'bg-gray-200 text-gray-500' };
+    const adminName = document.getElementById('admin-name').innerText;
 
-    orders.forEach(o => {
-        const tr = document.createElement('tr'); tr.className = "border-b hover:bg-gray-50 group";
-        let details = o.type === 'file' ? `[FILE] ${o.page_count} trang` : `[CHỮ] ${o.board_count} bảng`;
-        let actions = `<div class="flex flex-col gap-1">`;
-        if (o.status === 'pending') actions += `<button onclick="updateStatus('${o.id}', 'processing')" class="bg-blue-600 text-white px-2 rounded text-xs">Nhận</button><button onclick="updateStatus('${o.id}', 'cancelled')" class="bg-gray-400 text-white px-2 rounded text-xs">Hủy</button>`;
-        else if (o.status === 'processing') actions += `<button onclick="openPriceModal('${o.id}', ${o.original_price}, ${o.adjustment_fee})" class="bg-yellow-500 text-white px-2 rounded text-xs">Giá</button><button onclick="requestPayment('${o.id}', '${o.user_id}', ${o.final_price})" class="bg-indigo-600 text-white px-2 rounded text-xs">QR</button>`;
-        else if (o.status === 'payment_pending') actions += `<button onclick="updateStatus('${o.id}', 'paid')" class="bg-green-500 text-white px-2 rounded text-xs">Đã Trả</button>`;
-        else if (o.status === 'paid') actions += `<button onclick="updateStatus('${o.id}', 'completed')" class="bg-green-700 text-white px-2 rounded text-xs">Xong</button>`;
-        actions += `<button onclick="deleteOrder('${o.id}')" class="text-red-500 text-xs">Xóa</button></div>`;
+    users.forEach(u => {
+        const tr = document.createElement('tr'); tr.className = "border-b hover:bg-gray-50";
+        const isMe = (u.email === adminName) || (u.full_name === adminName);
+        
+        let roleButton = '';
+        if (u.role === 'customer') {
+            roleButton = `<button onclick="changeRole('${u.id}', 'admin')" class="text-blue-500 border border-blue-500 px-2 py-1 rounded text-xs hover:bg-blue-50">🔼 Admin</button>`;
+        } else {
+            roleButton = `<span class="text-green-600 font-bold text-xs">Admin</span>`;
+            if (!isMe) roleButton += ` <button onclick="changeRole('${u.id}', 'customer')" class="text-gray-400 text-xs ml-2 underline">🔽 Hạ</button>`;
+        }
 
-        tr.innerHTML = `<td class="p-4 text-xs">${o.id.slice(0,6)}<br>${formatDate(o.created_at)}</td><td class="p-4 font-medium">${o.profiles?.full_name || '...'}<br><span class="text-xs text-gray-500">${o.profiles?.email}</span></td><td class="p-4 text-sm">${details}</td><td class="p-4 font-bold">${formatCurrency(o.final_price)}</td><td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold ${statusDict[o.status] || ''}">${o.status}</span></td><td class="p-4">${actions}</td>`;
+        const deleteBtn = isMe ? `<span class="text-gray-300 text-xs">--</span>` : `<button onclick="deleteUser('${u.id}')" class="text-red-500 hover:text-red-700 ml-4 font-bold text-sm">🗑️ Xóa</button>`;
+
+        tr.innerHTML = `
+            <td class="p-4"><img src="${u.avatar_url || 'https://via.placeholder.com/150'}" class="w-8 h-8 rounded-full bg-gray-300 object-cover border"></td>
+            <td class="p-4 font-medium">${u.full_name || 'Chưa đặt tên'}<br><span class="text-xs text-gray-500">${u.email}</span></td>
+            <td class="p-4">${roleButton}</td>
+            <td class="p-4 text-gray-500 text-sm">${formatDate(u.created_at)}</td>
+            <td class="p-4">${deleteBtn}</td>
+        `;
         tbody.appendChild(tr);
     });
 }
 
-function handleSearch() {
-    const term = document.getElementById('search-input').value.toLowerCase();
-    displayedOrders = allOrders.filter(o => (o.profiles?.full_name || '').toLowerCase().includes(term) || o.id.toLowerCase().includes(term));
-    renderOrders(displayedOrders);
-}
-function filterOrders(status) {
-    document.getElementById('search-input').value = ''; 
-    if (status === 'all') displayedOrders = allOrders;
-    else displayedOrders = allOrders.filter(o => o.status === status);
-    renderOrders(displayedOrders);
+async function changeRole(id, role) { if(role === 'admin' && !confirm("Cấp Admin?")) return; await _supabase.from('profiles').update({ role }).eq('id', id); loadUsers(); }
+async function deleteUser(id) {
+    const { data } = await _supabase.from('orders').select('id').eq('user_id', id).eq('status', 'pending');
+    if(data && data.length > 0) return alert("User này còn đơn hàng chưa xong!");
+    if(confirm("Xóa vĩnh viễn?")) { await _supabase.from('profiles').delete().eq('id', id); loadUsers(); }
 }
 
-async function updateStatus(id, status) { await _supabase.from('orders').update({ status }).eq('id', id); }
-async function deleteOrder(id) { if(confirm("Xóa?")) { await _supabase.from('orders').delete().eq('id', id); allOrders = allOrders.filter(o => o.id !== id); handleSearch(); } }
-function openPriceModal(id, org, fee) { editingOrderId = id; originalPriceRef = org; document.getElementById('modal-org-price').innerText = formatCurrency(org); document.getElementById('modal-new-price').value = org + fee; document.getElementById('modal-price').classList.remove('hidden'); }
-async function confirmUpdatePrice() { const fee = parseInt(document.getElementById('modal-new-price').value) - originalPriceRef; await _supabase.from('orders').update({ adjustment_fee: fee, adjustment_reason: document.getElementById('modal-reason').value }).eq('id', editingOrderId); document.getElementById('modal-price').classList.add('hidden'); }
-async function requestPayment(id, uid, amt) { if(confirm("Gửi QR?")) { await _supabase.from('orders').update({ status: 'payment_pending' }).eq('id', id); await _supabase.from('messages').insert({ sender_id: (await _supabase.auth.getUser()).data.user.id, receiver_id: uid, content: `Thanh toán: ${formatCurrency(amt)}`, is_admin: true }); alert("Đã gửi!"); } }
-
-async function loadUsers() { /* Giữ nguyên logic load user cũ */
-    const { data } = await _supabase.from('profiles').select('*').order('created_at');
-    const tbody = document.getElementById('users-table-body'); tbody.innerHTML = '';
-    data.forEach(u => { tbody.innerHTML += `<tr class="border-b"><td class="p-4"><div class="w-8 h-8 bg-gray-300 rounded-full"></div></td><td class="p-4">${u.email}</td><td class="p-4">${u.role}</td><td class="p-4">${formatDate(u.created_at)}</td><td class="p-4"><button onclick="deleteUser('${u.id}')" class="text-red-500">Xóa</button></td></tr>`; });
+// ============================================================
+// 5. SETTINGS & REALTIME
+// ============================================================
+async function loadSettingsAdmin() { /* ... (Giữ nguyên logic cũ) ... */ 
+    const { data } = await _supabase.from('settings').select('*').single(); 
+    if(data) { document.getElementById('set-page-price').value = data.price_per_page; document.getElementById('set-board-price').value = data.price_per_board; }
 }
-async function changeRole(id, role) { if(confirm("Đổi quyền?")) { await _supabase.from('profiles').update({ role }).eq('id', id); loadUsers(); } }
-async function deleteUser(id) { if(confirm("Xóa User?")) { await _supabase.from('profiles').delete().eq('id', id); loadUsers(); } }
-async function loadSettingsAdmin() { /* Giữ nguyên */ }
-async function saveSettings() { /* Giữ nguyên */ }
+async function saveSettings() { 
+    /* ... (Giữ nguyên logic cũ) ... */
+    const { data } = await _supabase.from('settings').select('id').single();
+    await _supabase.from('settings').update({ 
+        price_per_page: document.getElementById('set-page-price').value, 
+        price_per_board: document.getElementById('set-board-price').value 
+    }).eq('id', data.id);
+    alert("Đã lưu!");
+}
 
 function setupRealtime() {
     _supabase.channel('admin-all')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => loadOrders())
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-            // Nếu đang mở chat với đúng người vừa nhắn -> Hiện tin nhắn
             if(currentChatUserId && (payload.new.sender_id === currentChatUserId || payload.new.receiver_id === currentChatUserId)) {
                 appendAdminMessage(payload.new);
             }
-            // Reload danh sách người nhắn (để người mới hiện lên đầu)
             loadChatUsers();
         })
         .subscribe();

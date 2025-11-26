@@ -190,40 +190,78 @@ function saveBoardData() {
     closeModal();
 }
 
+// --- CẬP NHẬT HÀM NÀY TRONG script_index.js ---
 async function submitOrder() {
     if(!currentUser) return alert("Vui lòng đăng nhập!");
+    
     const type = document.querySelector('input[name="orderType"]:checked').value;
+    // Tính lại tiền lần cuối để chính xác
     const originalPrice = calculatePrice();
     
-    let payload = { user_id: currentUser.id, type: type, original_price: Math.round(originalPrice), status: 'pending' };
+    let payload = {
+        user_id: currentUser.id,
+        type: type,
+        original_price: Math.round(originalPrice),
+        status: 'pending'
+    };
 
     if (type === 'file') {
         const fileInput = document.getElementById('file-upload');
-        if(fileInput.files.length === 0) return alert("Vui lòng chọn file!");
-        payload.file_url = "demo_file_" + fileInput.files[0].name; 
+        const file = fileInput.files[0];
+        
+        if (!file) return alert("Vui lòng chọn file cần in!");
+
+        // 1. TẠO TÊN FILE DUY NHẤT (Tránh trùng)
+        const fileName = `uploads/${Date.now()}_${file.name.replace(/\s/g, '_')}`;
+
+        // 2. UPLOAD LÊN SUPABASE STORAGE (Bucket tên là 'files')
+        // Lưu ý: Bạn phải tạo Bucket 'files' chế độ Public trong Supabase trước
+        const { data: uploadData, error: uploadError } = await _supabase.storage
+            .from('files') // Tên bucket
+            .upload(fileName, file);
+
+        if (uploadError) {
+            console.error(uploadError);
+            return alert("Lỗi tải file lên: " + uploadError.message);
+        }
+
+        // 3. LẤY LINK TẢI VỀ (PUBLIC URL)
+        const { data: urlData } = _supabase.storage.from('files').getPublicUrl(fileName);
+        
+        // Gán link thật vào đơn hàng
+        payload.file_url = urlData.publicUrl;
+        
+        // Các thông số khác
         payload.page_count = document.getElementById('page-count').value;
         payload.font_size = document.getElementById('font-size').value;
         payload.density = document.getElementById('density').value == 1 ? 'normal' : 'bold';
         payload.is_landscape = document.getElementById('orientation').value === 'landscape';
+
     } else {
+        // Logic in chữ (Giữ nguyên)
         const count = parseInt(document.getElementById('board-count').value);
         if (count === 0) return alert("Vui lòng chọn số lượng bảng!");
         const emptyBoard = boardsData.find(b => !b.content);
         if (emptyBoard) return alert(`Vui lòng điền nội dung cho Bảng ${emptyBoard.id}`);
+        
         payload.board_count = count;
         payload.boards_data = boardsData;
         payload.room_number = document.getElementById('room-num').value;
         payload.floor_number = document.getElementById('floor-num').value;
     }
 
+    // Gửi đơn hàng vào Database
     const { error } = await _supabase.from('orders').insert(payload);
-    if (error) alert("Lỗi: " + error.message);
-    else {
+    
+    if (error) {
+        alert("Lỗi tạo đơn: " + error.message);
+    } else {
         alert("Tạo đơn hàng thành công!");
         resetForm();
         switchTab('my-orders');
     }
 }
+
 
 function resetForm() {
     document.getElementById('page-count').value = 1;
