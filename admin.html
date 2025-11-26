@@ -1,167 +1,431 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trang ADMIN</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Thêm Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Trị - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Hiệu ứng cho hàng khi hover */
+        tr:hover td { background-color: #f9fafb; }
+    </style>
 </head>
-<body>
-  <header>
-    <h1>TRANG CHỦ ADMIN</h1>
-    <nav>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-<ul class="navbar">
-  <li>
-    <a href="#" id="nav-orders">
-      <span class="material-symbols-outlined">home</span>
-      </a>
-  </li>
-  <li>
-    <a href="#" id="nav-statistics">
-      <span class="material-symbols-outlined">receipt_long</span>
-      </a>
-  </li>
-  <li>
-    <a href="#" id="nav-support">
-      <span class="material-symbols-outlined">help</span>
-      </a>
-  </li>
-  <li>
-    <a href="#" id="nav-account">
-      <span class="material-symbols-outlined">account_circle</span>
-      </a>
-  </li>
-</ul>
+<body class="bg-gray-100 font-sans h-screen flex overflow-hidden">
 
-    </nav>
-  </header>
-
-  <main>
-    <!-- Section ĐƠN HÀNG -->
-    <section id="orders-section" class="section active">
-      <h2>Quản Lý Đơn Hàng</h2>
-      <div class="section-info">
-        <p>Quản lý và xử lý tất cả đơn hàng từ khách hàng</p>
-      </div>
-      <div class="search-container">
-        <input type="text" id="search-orders" placeholder="Tìm kiếm đơn hàng...">
-      </div>
-      <div id="orders-list">
-        <!-- Danh sách đơn hàng sẽ được hiển thị ở đây -->
-      </div>
-    </section>
-
-    <!-- Section THỐNG KÊ TÀI KHOẢN -->
-    <section id="statistics-section" class="section">
-      <h2>Thống Kê Tài Khoản</h2>
-      <div class="section-info">
-        <p>Quản lý thông tin và phân quyền người dùng</p>
-      </div>
-      <div class="table-container">
-        <table id="users-table">
-          <thead>
-            <tr>
-              <th>STT</th>
-              <th>Tên</th>
-              <th>Email</th>
-              <th>SĐT</th>
-              <th>Vai trò</th>
-              <th>Trạng thái</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Dữ liệu người dùng sẽ được hiển thị ở đây -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Section HỖ TRỢ -->
-    <section id="support-section" class="section">
-      <h2>Hỗ Trợ Khách Hàng</h2>
-      <div class="section-info">
-        <p>Xử lý các yêu cầu hỗ trợ từ khách hàng</p>
-      </div>
-      <div id="support-chats">
-        <!-- Danh sách chat hỗ trợ sẽ được hiển thị ở đây -->
-      </div>
-    </section>
-
-    <!-- Section THÔNG TIN TÀI KHOẢN -->
-    <section id="account-section" class="section">
-      <div id="admin-login-form">
-        <h2>Đăng Nhập Admin</h2>
-        <div class="form-group">
-          <label for="admin-email">Email:</label>
-          <input type="email" id="admin-email" placeholder="Nhập email admin" required>
+    <aside class="w-64 bg-gray-900 text-white flex flex-col">
+        <div class="p-4 text-center font-bold text-xl border-b border-gray-700">
+            ADMIN PANEL
         </div>
-        <div class="form-group">
-          <label for="admin-password">Mật khẩu:</label>
-          <input type="password" id="admin-password" placeholder="Nhập mật khẩu" required>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchView('orders')" id="nav-orders" class="w-full text-left p-3 rounded hover:bg-gray-800 bg-gray-800">📦 Quản lý Đơn hàng</button>
+            <button onclick="switchView('users')" id="nav-users" class="w-full text-left p-3 rounded hover:bg-gray-800">👥 Quản lý Tài khoản</button>
+            <button onclick="switchView('settings')" id="nav-settings" class="w-full text-left p-3 rounded hover:bg-gray-800">⚙️ Cấu hình Giá</button>
+        </nav>
+        <div class="p-4 border-t border-gray-700">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 rounded-full bg-green-500"></div>
+                <div>
+                    <p class="text-sm font-bold" id="admin-name">Admin</p>
+                    <p class="text-xs text-green-400">Đang hoạt động</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="w-full bg-red-600 py-2 rounded hover:bg-red-700 text-sm">Đăng xuất</button>
         </div>
-        <button type="button" id="admin-login-btn">Đăng Nhập</button>
-        <div class="admin-note">
-          <p><strong>Tài khoản mặc định:</strong></p>
-          <p>Email: fuwun123@gmail.com</p>
-          <p>Mật khẩu: H@chin123</p>
-        </div>
-      </div>
+    </aside>
 
-      <div id="admin-account-info" style="display:none;">
-        <h2>Thông Tin Tài Khoản Admin</h2>
-        <div id="admin-details">
-          <!-- Thông tin admin sẽ được hiển thị ở đây -->
-        </div>
-        <div class="admin-actions">
-          <button onclick="showPriceSettings()" class="secondary">Cài đặt giá in</button>
-          <button type="button" id="admin-logout-btn" class="danger">Đăng Xuất</button>
-        </div>
-      </div>
-    </section>
+    <main class="flex-1 flex flex-col overflow-hidden">
+        
+        <header class="bg-white shadow p-4 z-10 flex justify-between items-center">
+            <h2 id="page-title" class="text-xl font-bold text-gray-800">Quản lý Đơn hàng</h2>
+        </header>
 
-    <!-- Modal quản lý tài khoản -->
-    <div id="user-management-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <div id="user-management-form">
-          <!-- Form quản lý tài khoản sẽ được hiển thị ở đây -->
+        <div class="flex-1 overflow-auto p-6 relative">
+            
+            <div id="view-orders" class="fade-in">
+                
+                <div class="flex flex-col md:flex-row gap-4 mb-4 justify-between">
+                    <div class="relative w-full md:w-1/3">
+                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="🔍 Tìm tên, email hoặc mã đơn..." class="w-full pl-10 pr-4 py-2 border rounded shadow-sm focus:outline-none focus:border-blue-500">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 overflow-x-auto pb-2">
+                        <button onclick="filterOrders('all')" class="whitespace-nowrap px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm font-medium">Tất cả</button>
+                        <button onclick="filterOrders('pending')" class="whitespace-nowrap px-3 py-2 rounded bg-yellow-100 text-yellow-800 text-sm font-bold border border-yellow-200">Mới</button>
+                        <button onclick="filterOrders('processing')" class="whitespace-nowrap px-3 py-2 rounded bg-blue-100 text-blue-800 text-sm border border-blue-200">Đang xử lý</button>
+                        <button onclick="filterOrders('payment_pending')" class="whitespace-nowrap px-3 py-2 rounded bg-orange-100 text-orange-800 text-sm border border-orange-200">Chờ TT</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded shadow overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-gray-600 text-sm uppercase">
+                            <tr>
+                                <th class="p-4 border-b">Mã / Thời gian</th>
+                                <th class="p-4 border-b">Khách hàng</th>
+                                <th class="p-4 border-b">Chi tiết đơn</th>
+                                <th class="p-4 border-b">Tổng tiền</th>
+                                <th class="p-4 border-b">Trạng thái</th>
+                                <th class="p-4 border-b">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body" class="text-sm text-gray-700">
+                            </tbody>
+                    </table>
+                    <div id="no-result" class="hidden p-8 text-center text-gray-500">
+                        Không tìm thấy đơn hàng nào khớp với từ khóa.
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-users" class="hidden fade-in">
+                <div class="bg-white rounded shadow overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-600 text-sm uppercase">
+                            <tr>
+                                <th class="p-4">Avatar</th>
+                                <th class="p-4">Email / Tên</th>
+                                <th class="p-4">Vai trò (Role)</th>
+                                <th class="p-4">Ngày tham gia</th>
+                                <th class="p-4">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-settings" class="hidden fade-in max-w-lg">
+                <div class="bg-white p-6 rounded shadow">
+                    <h3 class="font-bold text-lg mb-4 text-blue-800">Bảng giá Gốc (Hệ thống)</h3>
+                    <label class="block mb-2 text-sm font-medium">Giá in giấy (VNĐ/Trang)</label>
+                    <input type="number" id="set-page-price" class="w-full border p-2 rounded mb-4">
+                    <label class="block mb-2 text-sm font-medium">Giá in bảng chữ (VNĐ/Bảng)</label>
+                    <input type="number" id="set-board-price" class="w-full border p-2 rounded mb-4">
+                    <label class="block mb-2 text-sm font-medium">Phí tăng thêm độ đậm (%)</label>
+                    <input type="number" id="set-density" class="w-full border p-2 rounded mb-6">
+                    <button onclick="saveSettings()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Lưu Cấu Hình</button>
+                </div>
+            </div>
+
         </div>
-      </div>
+    </main>
+
+    <div id="modal-price" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded w-96 shadow-lg">
+            <h3 class="font-bold text-lg mb-4">Chỉnh sửa giá đơn hàng</h3>
+            <p class="text-sm text-gray-500 mb-2">Giá gốc máy tính: <span id="modal-org-price" class="font-bold"></span></p>
+            <label class="block text-sm font-medium">Giá chốt thực tế (VNĐ)</label>
+            <input type="number" id="modal-new-price" class="w-full border p-2 rounded mb-3 font-bold text-red-600">
+            <label class="block text-sm font-medium">Lý do điều chỉnh</label>
+            <input type="text" id="modal-reason" class="w-full border p-2 rounded mb-4" placeholder="VD: File tốn mực, Khách quen giảm giá...">
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('modal-price').classList.add('hidden')" class="bg-gray-200 px-4 py-2 rounded">Hủy</button>
+                <button onclick="confirmUpdatePrice()" class="bg-blue-600 text-white px-4 py-2 rounded">Cập nhật</button>
+            </div>
+        </div>
     </div>
 
-    <!-- Modal hiển thị thông báo -->
-    <div id="message-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <p id="modal-message"></p>
-      </div>
-    </div>
+    <script src="script_admin..js"></script>
+    <script>
+        // --- BIẾN TOÀN CỤC ---
+        let allOrders = []; // Chứa tất cả đơn
+        let displayedOrders = []; // Chứa đơn đang hiển thị (sau khi lọc/tìm)
+        let editingOrderId = null;
+        let originalPriceRef = 0;
 
-    <!-- Modal sao chép đơn hàng -->
-    <div id="copy-options-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <div id="copy-options">
-          <!-- Tùy chọn sao chép sẽ được hiển thị ở đây -->
-        </div>
-      </div>
-    </div>
-  </main>
+        // --- KHỞI TẠO & AUTH ---
+        async function initAdmin() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (!user) return window.location.href = 'index.html';
 
-  <footer>
-    <p><a href="index.html">Quay về trang chủ khách hàng</a></p>
-  </footer>
-  <div>
-<audio id="hiddenSound" preload="auto">
-    <source src="MUSIC/莫問歸期.mp3" type="audio/mpeg">
-    Trình duyệt của bạn không hỗ trợ thẻ audio.
-</audio>
-</div>
+            const { data: profile } = await _supabase.from('profiles').select('role, full_name').eq('id', user.id).single();
+            if (profile.role !== 'admin') {
+                alert("Bạn không có quyền truy cập trang này!");
+                return window.location.href = 'index.html';
+            }
 
-  <script src="customer.js"></script>
+            document.getElementById('admin-name').innerText = profile.full_name || user.email;
+            
+            loadOrders();
+            setupRealtime();
+        }
+        initAdmin();
+
+        function switchView(viewId) {
+            ['orders', 'users', 'settings'].forEach(v => {
+                document.getElementById('view-' + v).classList.add('hidden');
+                document.getElementById('nav-' + v).classList.remove('bg-gray-800');
+            });
+            document.getElementById('view-' + viewId).classList.remove('hidden');
+            document.getElementById('nav-' + viewId).classList.add('bg-gray-800');
+            const titles = { 'orders': 'Quản lý Đơn hàng', 'users': 'Quản lý Tài khoản', 'settings': 'Cấu hình' };
+            document.getElementById('page-title').innerText = titles[viewId];
+            if(viewId === 'users') loadUsers();
+            if(viewId === 'settings') loadSettingsAdmin();
+        }
+
+        async function logout() {
+            await _supabase.auth.signOut();
+            window.location.href = 'index.html';
+        }
+
+        // --- PHẦN 1: QUẢN LÝ ĐƠN HÀNG ---
+        async function loadOrders() {
+            const { data, error } = await _supabase
+                .from('orders')
+                .select(`*, profiles(full_name, email)`) 
+                .order('created_at', { ascending: false });
+            
+            if (data) {
+                allOrders = data;
+                displayedOrders = data; // Mặc định hiển thị hết
+                renderOrders(data);
+            }
+        }
+
+        // --- TÍNH NĂNG: TÌM KIẾM ---
+        function handleSearch() {
+            const term = document.getElementById('search-input').value.toLowerCase();
+            
+            // Lọc danh sách dựa trên tên, email hoặc ID
+            displayedOrders = allOrders.filter(o => {
+                const name = (o.profiles?.full_name || '').toLowerCase();
+                const email = (o.profiles?.email || '').toLowerCase();
+                const id = o.id.toLowerCase();
+                return name.includes(term) || email.includes(term) || id.includes(term);
+            });
+            
+            renderOrders(displayedOrders);
+        }
+
+        // --- TÍNH NĂNG: LỌC TRẠNG THÁI ---
+        function filterOrders(status) {
+            document.getElementById('search-input').value = ''; // Reset thanh tìm kiếm
+            if (status === 'all') displayedOrders = allOrders;
+            else displayedOrders = allOrders.filter(o => o.status === status);
+            renderOrders(displayedOrders);
+        }
+
+        function renderOrders(orders) {
+            const tbody = document.getElementById('orders-table-body');
+            tbody.innerHTML = '';
+
+            // Ẩn/Hiện thông báo không tìm thấy
+            if(orders.length === 0) {
+                document.getElementById('no-result').classList.remove('hidden');
+            } else {
+                document.getElementById('no-result').classList.add('hidden');
+            }
+
+            const statusDict = {
+                'pending': '<span class="px-2 py-1 rounded bg-yellow-100 text-yellow-800 text-xs font-bold">MỚI</span>',
+                'processing': '<span class="px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-bold">ĐANG XỬ LÝ</span>',
+                'payment_pending': '<span class="px-2 py-1 rounded bg-orange-100 text-orange-800 text-xs font-bold">CHỜ THANH TOÁN</span>',
+                'paid': '<span class="px-2 py-1 rounded bg-green-50 text-green-600 text-xs font-bold">ĐÃ TRẢ TIỀN</span>',
+                'completed': '<span class="px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-bold">HOÀN THÀNH</span>',
+                'cancelled': '<span class="px-2 py-1 rounded bg-gray-200 text-gray-500 text-xs font-bold">ĐÃ HỦY</span>',
+            };
+
+            orders.forEach(o => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50 group"; // Thêm class group để hover
+
+                // Nội dung chi tiết
+                let details = '';
+                if(o.type === 'file') {
+                    details = `
+                        <div class="text-sm">
+                            <span class="font-bold text-blue-600">[IN FILE]</span> <a href="#" class="underline text-blue-500">Tải xuống</a><br>
+                            • ${o.page_count} trang, Cỡ ${o.font_size}, ${o.is_landscape ? 'Ngang' : 'Dọc'}
+                        </div>`;
+                } else {
+                    details = `
+                        <div class="text-sm">
+                            <span class="font-bold text-green-600">[IN CHỮ]</span> (${o.board_count} bảng)<br>
+                            • P.${o.room_number || '?'} - T.${o.floor_number || '?'}<br>
+                            <button onclick="smartCopy('${o.id}')" class="mt-1 text-xs border border-blue-500 text-blue-500 px-2 rounded hover:bg-blue-50">📋 Sao chép</button>
+                        </div>`;
+                }
+
+                // Cột Hành động
+                let actions = `<div class="flex flex-col gap-2">`;
+                
+                if (o.status === 'pending') {
+                    actions += `<button onclick="updateStatus('${o.id}', 'processing')" class="bg-blue-600 text-white px-2 py-1 text-xs rounded">Nhận đơn</button>`;
+                    actions += `<button onclick="updateStatus('${o.id}', 'cancelled')" class="bg-gray-400 text-white px-2 py-1 text-xs rounded">Hủy bỏ</button>`;
+                } 
+                else if (o.status === 'processing') {
+                    actions += `<button onclick="openPriceModal('${o.id}', ${o.original_price}, ${o.adjustment_fee})" class="bg-yellow-500 text-white px-2 py-1 text-xs rounded">✏️ Chỉnh giá</button>`;
+                    actions += `<button onclick="requestPayment('${o.id}', '${o.user_id}', ${o.final_price})" class="bg-indigo-600 text-white px-2 py-1 text-xs rounded">Yêu cầu T.Toán</button>`;
+                }
+                else if (o.status === 'payment_pending') {
+                    actions += `<button onclick="updateStatus('${o.id}', 'paid')" class="bg-green-500 text-white px-2 py-1 text-xs rounded">Đã nhận tiền</button>`;
+                }
+                else if (o.status === 'paid') {
+                     actions += `<button onclick="updateStatus('${o.id}', 'completed')" class="bg-green-700 text-white px-2 py-1 text-xs rounded">Hoàn thành</button>`;
+                }
+                
+                // --- NÚT XÓA ĐƠN HÀNG (Đã thêm lại) ---
+                actions += `<button onclick="deleteOrder('${o.id}')" class="text-red-500 text-xs hover:text-red-700 hover:underline border border-transparent hover:border-red-200 rounded py-1 flex justify-center items-center gap-1">🗑️ Xóa đơn</button>`;
+                
+                actions += `</div>`;
+
+                let priceDisplay = `<div class="font-bold">${formatCurrency(o.final_price)}</div>`;
+                if(o.adjustment_fee !== 0) {
+                    priceDisplay += `<div class="text-xs text-red-500 italic">(${o.adjustment_fee > 0 ? '+' : ''}${formatCurrency(o.adjustment_fee)})</div>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-4 text-xs text-gray-500">${o.id.slice(0,6)}...<br>${formatDate(o.created_at)}</td>
+                    <td class="p-4 font-medium">${o.profiles?.full_name || 'No Name'}<br><span class="text-xs text-gray-400">${o.profiles?.email}</span></td>
+                    <td class="p-4">${details}</td>
+                    <td class="p-4">${priceDisplay}</td>
+                    <td class="p-4">${statusDict[o.status]}</td>
+                    <td class="p-4">${actions}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- CÁC HÀM HÀNH ĐỘNG ---
+
+        async function updateStatus(orderId, newStatus) {
+            await _supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+            // Realtime sẽ tự reload
+        }
+
+        // --- HÀM XÓA ĐƠN HÀNG (QUAN TRỌNG) ---
+        async function deleteOrder(id) {
+            if(!confirm("CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN đơn hàng này?\n(Không thể khôi phục lại)")) return;
+            
+            const { error } = await _supabase.from('orders').delete().eq('id', id);
+            
+            if (error) {
+                alert("Lỗi: " + error.message);
+            } else {
+                // Xóa thành công, cập nhật UI ngay lập tức
+                allOrders = allOrders.filter(o => o.id !== id);
+                handleSearch(); // Render lại view hiện tại
+            }
+        }
+
+        function smartCopy(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order || !order.boards_data) return;
+            let text = "";
+            order.boards_data.forEach(b => { text += `${b.subject}\n${b.content}\n\n`; });
+            navigator.clipboard.writeText(text).then(() => { alert("Đã sao chép nội dung!"); });
+        }
+
+        function openPriceModal(orderId, original, fee) {
+            editingOrderId = orderId;
+            originalPriceRef = original;
+            document.getElementById('modal-org-price').innerText = formatCurrency(original);
+            document.getElementById('modal-new-price').value = original + fee;
+            document.getElementById('modal-reason').value = "";
+            document.getElementById('modal-price').classList.remove('hidden');
+        }
+
+        async function confirmUpdatePrice() {
+            const newPrice = parseInt(document.getElementById('modal-new-price').value);
+            const reason = document.getElementById('modal-reason').value;
+            const adjustment_fee = newPrice - originalPriceRef;
+            await _supabase.from('orders').update({ adjustment_fee: adjustment_fee, adjustment_reason: reason }).eq('id', editingOrderId);
+            document.getElementById('modal-price').classList.add('hidden');
+        }
+
+        async function requestPayment(orderId, userId, amount) {
+            if(!confirm(`Xác nhận yêu cầu khách thanh toán ${formatCurrency(amount)}?`)) return;
+            await _supabase.from('orders').update({ status: 'payment_pending' }).eq('id', orderId);
+            const qrLink = `https://img.vietqr.io/image/MB-0000000000-compact.jpg?amount=${amount}&addInfo=Don Hang ${orderId.slice(0,5)}`;
+            await _supabase.from('messages').insert({
+                sender_id: (await _supabase.auth.getUser()).data.user.id,
+                content: `Đơn hàng của bạn đã sẵn sàng. Vui lòng thanh toán số tiền: ${formatCurrency(amount)}. Quét mã bên dưới:`,
+                image_url: qrLink,
+                is_admin: true
+            });
+            alert("Đã gửi yêu cầu thanh toán!");
+        }
+
+        // --- PHẦN 2: QUẢN LÝ USER ---
+        async function loadUsers() {
+            const { data: users } = await _supabase.from('profiles').select('*').order('created_at');
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '';
+
+            users.forEach(u => {
+                const isMyAccount = u.email === document.getElementById('admin-name').innerText;
+                let roleButton = '';
+                
+                if (u.role === 'customer') {
+                    roleButton = `<button onclick="changeRole('${u.id}', 'admin')" class="text-blue-500 border border-blue-500 px-2 rounded text-xs hover:bg-blue-50">🔼 Cấp quyền Admin</button>`;
+                } else {
+                    roleButton = `<span class="text-green-600 font-bold text-xs">Admin</span>`;
+                    if(!isMyAccount) roleButton += ` <button onclick="changeRole('${u.id}', 'customer')" class="text-gray-400 text-xs ml-2 hover:text-red-500">🔽 Hạ quyền</button>`;
+                }
+                const deleteBtn = `<button onclick="deleteUser('${u.id}')" class="text-red-500 hover:text-red-700 ml-4 font-bold">🗑️ Xóa</button>`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="p-4"><img src="${u.avatar_url}" class="w-8 h-8 rounded-full bg-gray-300"></td>
+                        <td class="p-4 font-medium">${u.full_name || 'No Name'}<br><span class="text-xs text-gray-400">${u.email}</span></td>
+                        <td class="p-4">${roleButton}</td>
+                        <td class="p-4 text-gray-500 text-sm">${formatDate(u.created_at)}</td>
+                        <td class="p-4">${deleteBtn}</td>
+                    </tr>`;
+            });
+        }
+
+        async function changeRole(userId, newRole) {
+            if (newRole === 'admin' && !confirm("CẢNH BÁO: Cấp quyền Admin có thể gây rủi ro bảo mật. Tiếp tục?")) return;
+            await _supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+            loadUsers();
+        }
+
+        async function deleteUser(userId) {
+            const { data: orders } = await _supabase.from('orders').select('id').eq('user_id', userId).eq('status', 'pending');
+            if (orders && orders.length > 0) return alert("Người dùng này đang có đơn hàng chưa xử lý. Không thể xóa!");
+            if(!confirm("Xác nhận xóa VĨNH VIỄN người dùng này?")) return;
+            await _supabase.from('profiles').delete().eq('id', userId);
+            alert("Đã xóa người dùng.");
+            loadUsers();
+        }
+
+        // --- PHẦN 3: CẤU HÌNH ---
+        async function loadSettingsAdmin() {
+            const { data } = await _supabase.from('settings').select('*').single();
+            if(data) {
+                document.getElementById('set-page-price').value = data.price_per_page;
+                document.getElementById('set-board-price').value = data.price_per_board;
+                document.getElementById('set-density').value = data.density_fee_percent;
+            }
+        }
+        async function saveSettings() {
+            const { data } = await _supabase.from('settings').select('id').single();
+            await _supabase.from('settings').update({
+                price_per_page: document.getElementById('set-page-price').value,
+                price_per_board: document.getElementById('set-board-price').value,
+                density_fee_percent: document.getElementById('set-density').value
+            }).eq('id', data.id);
+            alert("Đã lưu cấu hình giá mới!");
+        }
+
+        // --- REALTIME ---
+        function setupRealtime() {
+            _supabase.channel('admin-orders')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+                    loadOrders(); // Tự động reload khi có thay đổi từ bất kỳ đâu
+                })
+                .subscribe();
+        }
+    </script>
 </body>
 </html>

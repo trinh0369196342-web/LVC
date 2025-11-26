@@ -1,239 +1,599 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trang Khách Hàng</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Thêm Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dịch Vụ In Ấn - Khách Hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .hidden { display: none !important; }
+        .active-tab { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: bold; }
+    </style>
 </head>
-<body>
-  <header class="n">
-    <h1>TRANG CHỦ KHÁCH HÀNG</h1>
-   </header>
-   <header class="navbar">
-    <nav>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<body class="bg-gray-100 font-sans">
 
-<ul class="navbar">
-  <li>
-    <a href="#" id="nav-home">
-      <span class="material-symbols-outlined">home</span>
-      </a>
-  </li>
-  <li>
-    <a href="#" id="nav-orders">
-      <span class="material-symbols-outlined">receipt_long</span>
-      </a>
-  </li>
-  <li>
-    <a href="#" id="nav-support">
-      <span class="material-symbols-outlined">help</span>
-      </a>
-  </li>
-  <li>
-    <a href="#" id="nav-account">
-      <span class="material-symbols-outlined">account_circle</span>
-      </a>
-  </li>
-</ul>
-
-    </nav>
-  </header>
-
-  <main>
-    <!-- Section HOME -->
-    <section id="home-section" class="section active">
-      <h2>Tạo Đơn Hàng Mới</h2>
-      
-      <!-- Hiển thị bảng giá -->
-      <div id="price-display" class="price-display"></div>
-
-      <form id="order-form">
-        <div class="form-group">
-          <label for="order-type">Loại đơn hàng:</label>
-          <select id="order-type">
-            <option value="print">In ấn</option>
-            <option value="text">In chữ</option>
-          </select>
+    <div id="auth-container" class="min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded shadow-md w-96">
+            <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Đăng Nhập</h2>
+            <input type="email" id="email" placeholder="Email (VD: fuwun123@gamil.com)" class="w-full p-2 mb-4 border rounded">
+            <input type="password" id="password" placeholder="Mật khẩu" class="w-full p-2 mb-4 border rounded">
+            <input type="text" id="full_name" placeholder="Họ tên đầy đủ (Nếu đăng ký)" class="w-full p-2 mb-4 border rounded hidden">
+            
+            <button onclick="handleLogin()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 mb-2">Đăng Nhập</button>
+            <button onclick="toggleAuthMode()" id="auth-switch-btn" class="w-full text-blue-500 text-sm">Chưa có tài khoản? Đăng ký ngay</button>
+            <p id="auth-error" class="text-red-500 text-sm mt-2 text-center"></p>
         </div>
-
-        <div id="print-options" class="form-group">
-          <label for="file-upload">Tải lên file in:</label>
-          <input type="file" id="file-upload" accept="image/*,.pdf,.doc,.docx">
-        </div>
-
-        <div id="text-options" class="form-group" style="display:none;">
-          <label for="text-content">Nội dung cần in:</label>
-          <textarea id="text-content" rows="5" placeholder="Nhập nội dung cần in..."></textarea>
-        </div>
-
-        <!-- Phần bảng nhập số -->
-        <div id="table-section" class="form-group" style="display:none;">
-          <label for="table-count">Số lượng bảng cần in:</label>
-          <select id="table-count">
-            <option value="0">Không có bảng</option>
-            <option value="1">1 bảng</option>
-            <option value="2">2 bảng</option>
-            <option value="3">3 bảng</option>
-            <option value="4">4 bảng</option>
-            <option value="5">5 bảng</option>
-          </select>
-          <div id="table-inputs-container">
-            <!-- Các ô nhập bảng sẽ được tạo động ở đây -->
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="page-count">Số trang:</label>
-          <select id="page-count">
-            <option value="1">1 trang</option>
-            <option value="2">2 trang</option>
-            <option value="3">3 trang</option>
-            <option value="4">4 trang</option>
-            <option value="5">5 trang</option>
-            <option value="10">10 trang</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="font-size">Cỡ chữ:</label>
-          <select id="font-size">
-            <option value="12">12pt</option>
-            <option value="14">14pt</option>
-            <option value="16">16pt</option>
-            <option value="18">18pt</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="font-weight">Độ đậm:</label>
-          <select id="font-weight">
-            <option value="normal">Bình thường</option>
-            <option value="bold">Đậm</option>
-            <option value="bolder">Rất đậm</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Hướng in:</label>
-          <div class="radio-group">
-            <input type="radio" id="portrait" name="orientation" value="portrait" checked>
-            <label for="portrait">Nằm thẳng</label>
-            <input type="radio" id="landscape" name="orientation" value="landscape">
-            <label for="landscape">Nằm ngang</label>
-          </div>
-        </div>
-
-        <div class="price-summary">
-          <strong>Tổng tiền: <span id="total-price">0 ₫</span></strong>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" id="create-order">Tạo Đơn Hàng</button>
-          <button type="button" id="reset-form" class="secondary">Làm Lại</button>
-        </div>
-      </form>
-    </section>
-
-    <!-- Section THÔNG TIN ĐƠN HÀNG -->
-    <section id="orders-section" class="section">
-      <h2>Thông Tin Đơn Hàng</h2>
-      <div class="search-container">
-        <input type="text" id="search-orders" placeholder="Tìm kiếm đơn hàng...">
-      </div>
-      <div id="orders-list">
-        <!-- Danh sách đơn hàng sẽ được hiển thị ở đây -->
-      </div>
-    </section>
-
-    <!-- Section HỖ TRỢ -->
-    <section id="support-section" class="section">
-      <h2>Hỗ Trợ Khách Hàng</h2>
-      <div id="support-chat">
-        <!-- Chat hỗ trợ sẽ được hiển thị ở đây -->
-      </div>
-    </section>
-
-    <!-- Section THÔNG TIN TÀI KHOẢN -->
-    <section id="account-section" class="section">
-      <div id="login-form">
-        <h2>Đăng Nhập</h2>
-        <div class="form-group">
-          <label for="login-email">Email:</label>
-          <input type="email" id="login-email" placeholder="Nhập email" required>
-        </div>
-        <div class="form-group">
-          <label for="login-password">Mật khẩu:</label>
-          <input type="password" id="login-password" placeholder="Nhập mật khẩu" required>
-        </div>
-        <button type="button" id="login-btn">Đăng Nhập</button>
-        <p class="form-switch">Chưa có tài khoản? <a href="#" id="show-register">Đăng ký tại đây</a></p>
-      </div>
-
-      <div id="register-form" style="display:none;">
-        <h2>Đăng Ký Tài Khoản</h2>
-        <div class="form-group">
-          <label for="register-name">Họ và tên:</label>
-          <input type="text" id="register-name" placeholder="Nhập họ và tên" required>
-        </div>
-        <div class="form-group">
-          <label for="register-email">Email:</label>
-          <input type="email" id="register-email" placeholder="Nhập email" required>
-        </div>
-        <div class="form-group">
-          <label for="register-phone">Số điện thoại:</label>
-          <input type="tel" id="register-phone" placeholder="Nhập số điện thoại" required>
-        </div>
-        <div class="form-group">
-          <label for="register-password">Mật khẩu:</label>
-          <input type="password" id="register-password" placeholder="Nhập mật khẩu" required>
-        </div>
-        <div class="form-group">
-          <label for="register-confirm">Xác nhận mật khẩu:</label>
-          <input type="password" id="register-confirm" placeholder="Xác nhận mật khẩu" required>
-        </div>
-        <button type="button" id="register-btn">Đăng Ký</button>
-        <p class="form-switch">Đã có tài khoản? <a href="#" id="show-login">Đăng nhập tại đây</a></p>
-      </div>
-
-      <div id="account-info" style="display:none;">
-        <h2>Thông Tin Tài Khoản</h2>
-        <div id="user-details">
-          <!-- Thông tin người dùng sẽ được hiển thị ở đây -->
-        </div>
-        <button type="button" id="logout-btn" class="secondary">Đăng Xuất</button>
-      </div>
-    </section>
-
-    <!-- Modal hiển thị thông báo -->
-    <div id="message-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <p id="modal-message"></p>
-      </div>
     </div>
 
-    <!-- Modal sao chép đơn hàng -->
-    <div id="copy-options-modal" class="modal">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <div id="copy-options">
-          <!-- Tùy chọn sao chép sẽ được hiển thị ở đây -->
+    <div id="app-container" class="hidden min-h-screen pb-20">
+        <header class="bg-white shadow p-4 flex justify-between items-center sticky top-0 z-10">
+            <h1 class="text-xl font-bold text-blue-600">Dịch Vụ In Ấn</h1>
+            <div class="flex items-center gap-3">
+                <span id="user-display-name" class="font-medium">User</span>
+                <button onclick="handleLogout()" class="text-red-500 text-sm border border-red-500 px-2 py-1 rounded">Thoát</button>
+            </div>
+        </header>
+
+        <div class="flex justify-center bg-white border-t">
+            <button onclick="switchTab('create-order')" id="tab-create" class="flex-1 py-3 text-center active-tab">Tạo Đơn Hàng</button>
+            <button onclick="switchTab('my-orders')" id="tab-list" class="flex-1 py-3 text-center text-gray-500">Đơn Của Tôi</button>
+            <button onclick="switchTab('profile')" id="tab-profile" class="flex-1 py-3 text-center text-gray-500">Tài Khoản</button>
         </div>
-      </div>
+
+        <div id="view-create-order" class="p-4 max-w-lg mx-auto">
+            <div class="flex gap-4 mb-6">
+                <label class="flex items-center cursor-pointer">
+                    <input type="radio" name="orderType" value="file" checked onchange="toggleOrderType()" class="mr-2"> In File (Tài liệu)
+                </label>
+                <label class="flex items-center cursor-pointer">
+                    <input type="radio" name="orderType" value="text" onchange="toggleOrderType()" class="mr-2"> In Chữ (Biển bảng)
+                </label>
+            </div>
+
+            <div id="form-file" class="bg-white p-4 rounded shadow">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Tải file lên (PDF, DOCX, Ảnh)</label>
+                    <input type="file" id="file-upload" class="w-full border p-2 rounded">
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium">Số trang</label>
+                        <input type="number" id="page-count" value="1" min="1" oninput="calculatePrice()" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Cỡ chữ</label>
+                        <select id="font-size" class="w-full border p-2 rounded">
+                            <option value="12">12 (Chuẩn)</option>
+                            <option value="14">14</option>
+                            <option value="16">16</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium">Độ đậm</label>
+                    <input type="range" id="density" min="1" max="3" value="1" class="w-full" oninput="calculatePrice()">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>Thường</span><span>Đậm</span><span>Siêu đậm</span>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium">Hướng giấy</label>
+                    <select id="orientation" class="w-full border p-2 rounded">
+                        <option value="portrait">Dọc</option>
+                        <option value="landscape">Ngang</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="form-text" class="bg-white p-4 rounded shadow hidden">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium">Vị trí dán</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="room-num" placeholder="Phòng (VD: 201)" class="w-1/2 border p-2 rounded">
+                        <input type="text" id="floor-num" placeholder="Tầng" class="w-1/2 border p-2 rounded">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium">Số lượng bảng (Max 8)</label>
+                    <select id="board-count" onchange="renderBoardSlots()" class="w-full border p-2 rounded">
+                        <option value="0">Chọn số lượng...</option>
+                        <option value="1">1 Bảng</option>
+                        <option value="2">2 Bảng</option>
+                        <option value="3">3 Bảng</option>
+                        <option value="4">4 Bảng</option>
+                        <option value="5">5 Bảng</option>
+                        <option value="6">6 Bảng</option>
+                        <option value="7">7 Bảng</option>
+                        <option value="8">8 Bảng</option>
+                    </select>
+                </div>
+                <div id="board-slots" class="grid grid-cols-2 gap-3 mb-4"></div>
+            </div>
+
+            <div class="mt-6 border-t pt-4">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-gray-600">Tạm tính:</span>
+                    <span id="total-price" class="text-2xl font-bold text-red-600">0 ₫</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="resetForm()" class="w-1/3 bg-gray-200 text-gray-700 py-3 rounded">Làm lại</button>
+                    <button onclick="submitOrder()" class="w-2/3 bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700">TẠO ĐƠN HÀNG</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-my-orders" class="hidden p-4 max-w-lg mx-auto">
+            <h2 class="font-bold text-lg mb-4">Lịch sử đơn hàng</h2>
+            <div id="orders-list" class="space-y-4">
+                <p class="text-center text-gray-500">Đang tải...</p>
+            </div>
+        </div>
+
+        <div id="view-profile" class="hidden p-4 max-w-lg mx-auto">
+             <div class="bg-white p-4 rounded shadow text-center">
+                 <img id="profile-avatar" src="" class="w-24 h-24 rounded-full mx-auto mb-4 border">
+                 <h3 id="profile-name" class="font-bold text-xl">User Name</h3>
+                 <p id="profile-email" class="text-gray-500 mb-4">email@example.com</p>
+                 <hr class="my-4">
+                 <p class="text-sm text-gray-400">Tính năng cập nhật Profile đầy đủ như yêu cầu (Đang phát triển UI)...</p>
+             </div>
+        </div>
     </div>
-  </main>
-  <div>
-<audio id="hiddenSound" preload="auto">
-    <source src="MUSIC/莫問歸期.mp3" type="audio/mpeg">
-    Trình duyệt của bạn không hỗ trợ thẻ audio.
-</audio>
-</div>
-  <footer>
-    <p><a href="admin.html">Chuyển đến trang Admin</a></p>
-  </footer>
-  <script src="customer.js"></script>
+
+    <div id="board-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded w-11/12 max-w-md">
+            <h3 class="font-bold text-lg mb-4">Nhập nội dung Bảng <span id="modal-board-idx"></span></h3>
+            <label class="block text-sm mb-1">Tiêu đề Môn</label>
+            <input type="text" id="modal-subject" class="w-full border p-2 rounded mb-3" placeholder="VD: Ngữ Văn">
+            
+            <label class="block text-sm mb-1">Nội dung chi tiết</label>
+            <textarea id="modal-content" rows="4" class="w-full border p-2 rounded mb-1" placeholder="Nhập nội dung..."></textarea>
+            <p class="text-xs text-red-500 mb-4">* Lưu ý: Chỉ in tự luận, CẤM in trắc nghiệm.</p>
+            
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded">Hủy</button>
+                <button onclick="saveBoardData()" class="px-4 py-2 bg-blue-600 text-white rounded">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-widget" class="fixed bottom-4 right-4 z-40">
+        <button onclick="toggleChat()" id="chat-btn" class="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700">
+            💬 Hỗ trợ
+        </button>
+        
+        <div id="chat-window" class="hidden absolute bottom-16 right-0 w-80 bg-white rounded-lg shadow-xl border overflow-hidden flex flex-col h-96">
+            <div class="bg-blue-600 text-white p-3 flex justify-between items-center">
+                <span class="font-bold">Chat với Admin</span>
+                <button onclick="toggleChat()" class="text-sm">✕</button>
+            </div>
+            <div id="chat-messages" class="flex-1 p-3 overflow-y-auto bg-gray-50 text-sm space-y-2">
+                </div>
+            <div class="p-2 border-t flex">
+                <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." class="flex-1 border p-2 rounded-l text-sm">
+                <button onclick="sendMessage()" class="bg-blue-600 text-white px-3 rounded-r">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script_index.js"></script>
+    <script>
+        // --- BIẾN TOÀN CỤC ---
+        let currentUser = null;
+        let boardsData = []; // Lưu dữ liệu 8 bảng: [{id:1, mon:'', noidung:''}, ...]
+        let currentModalIdx = 0;
+        let isRegistering = false;
+
+        // --- AUTHENTICATION ---
+        async function checkUser() {
+            const { data: { user } } = await _supabase.auth.getUser();
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                loadProfile();
+                loadSettings(); // Tải bảng giá từ admin
+                subscribeRealtime(); // Bật lắng nghe chat/đơn
+            }
+        }
+        checkUser();
+
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const fullName = document.getElementById('full_name').value;
+            const errorP = document.getElementById('auth-error');
+
+            try {
+                if (isRegistering) {
+                    // Đăng ký
+                    const { data, error } = await _supabase.auth.signUp({
+                        email, password,
+                        options: { data: { full_name: fullName } }
+                    });
+                    if (error) throw error;
+                    alert('Đăng ký thành công! Vui lòng kiểm tra email hoặc đăng nhập.');
+                    toggleAuthMode();
+                } else {
+                    // Đăng nhập
+                    const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    location.reload();
+                }
+            } catch (err) {
+                errorP.innerText = err.message;
+            }
+        }
+
+        function toggleAuthMode() {
+            isRegistering = !isRegistering;
+            document.getElementById('full_name').classList.toggle('hidden');
+            document.getElementById('auth-switch-btn').innerText = isRegistering ? "Đã có tài khoản? Đăng nhập" : "Chưa có tài khoản? Đăng ký ngay";
+            document.querySelector('#auth-container h2').innerText = isRegistering ? "Đăng Ký" : "Đăng Nhập";
+        }
+
+        async function handleLogout() {
+            await _supabase.auth.signOut();
+            location.reload();
+        }
+
+        async function loadProfile() {
+            const { data } = await _supabase.from('profiles').select('*').eq('id', currentUser.id).single();
+            if(data) {
+                document.getElementById('user-display-name').innerText = data.full_name || data.email;
+                document.getElementById('profile-name').innerText = data.full_name;
+                document.getElementById('profile-email').innerText = data.email;
+                // Nếu là Admin, chuyển hướng sang trang admin
+                if (data.role === 'admin') {
+                   if(confirm('Bạn là Admin. Chuyển sang trang quản trị?')) {
+                       window.location.href = 'admin.html';
+                   }
+                }
+            }
+        }
+
+        async function loadSettings() {
+            const { data } = await _supabase.from('settings').select('*').single();
+            if (data) GLOBAL_SETTINGS = data;
+        }
+
+        // --- LOGIC GIAO DIỆN (TABS) ---
+        function switchTab(tabId) {
+            // Ẩn hết view
+            document.getElementById('view-create-order').classList.add('hidden');
+            document.getElementById('view-my-orders').classList.add('hidden');
+            document.getElementById('view-profile').classList.add('hidden');
+            
+            // Reset style tab
+            ['tab-create', 'tab-list', 'tab-profile'].forEach(id => {
+                document.getElementById(id).className = 'flex-1 py-3 text-center text-gray-500';
+            });
+
+            // Hiện view chọn
+            if(tabId === 'create-order') {
+                document.getElementById('view-create-order').classList.remove('hidden');
+                document.getElementById('tab-create').className = 'flex-1 py-3 text-center active-tab';
+            } else if (tabId === 'my-orders') {
+                document.getElementById('view-my-orders').classList.remove('hidden');
+                document.getElementById('tab-list').className = 'flex-1 py-3 text-center active-tab';
+                loadMyOrders(); // Tải lại danh sách
+            } else {
+                document.getElementById('view-profile').classList.remove('hidden');
+                document.getElementById('tab-profile').className = 'flex-1 py-3 text-center active-tab';
+            }
+        }
+
+        function toggleOrderType() {
+            const type = document.querySelector('input[name="orderType"]:checked').value;
+            if (type === 'file') {
+                document.getElementById('form-file').classList.remove('hidden');
+                document.getElementById('form-text').classList.add('hidden');
+            } else {
+                document.getElementById('form-file').classList.add('hidden');
+                document.getElementById('form-text').classList.remove('hidden');
+            }
+            calculatePrice();
+        }
+
+        // --- LOGIC TÍNH TIỀN ---
+        function calculatePrice() {
+            let total = 0;
+            const type = document.querySelector('input[name="orderType"]:checked').value;
+
+            if (type === 'file') {
+                const pages = parseInt(document.getElementById('page-count').value) || 0;
+                const densityVal = parseInt(document.getElementById('density').value);
+                // Hệ số đậm: 1->1, 2->1.1 (20% fee?), 3->1.3
+                // Theo logic bạn yêu cầu: có phụ phí đậm
+                let densityMult = 1;
+                if(densityVal === 2) densityMult = 1 + (GLOBAL_SETTINGS.density_fee_percent / 100); 
+                if(densityVal === 3) densityMult = 1 + ((GLOBAL_SETTINGS.density_fee_percent * 2) / 100);
+
+                total = pages * GLOBAL_SETTINGS.price_per_page * densityMult;
+            } else {
+                const count = parseInt(document.getElementById('board-count').value) || 0;
+                total = count * GLOBAL_SETTINGS.price_per_board;
+            }
+
+            document.getElementById('total-price').innerText = formatCurrency(total);
+            return total;
+        }
+
+        // --- LOGIC IN CHỮ (DYNAMIC BOARDS) ---
+        function renderBoardSlots() {
+            const count = parseInt(document.getElementById('board-count').value);
+            const container = document.getElementById('board-slots');
+            container.innerHTML = '';
+            boardsData = []; // Reset data khi đổi số lượng
+
+            for (let i = 1; i <= count; i++) {
+                boardsData.push({ id: i, subject: '', content: '' }); // Init data empty
+                
+                const btn = document.createElement('div');
+                btn.className = 'border-2 border-dashed border-gray-300 rounded p-4 text-center cursor-pointer hover:border-blue-500 hover:text-blue-600 bg-gray-50';
+                btn.innerHTML = `<strong>Bảng ${i}</strong><br><span class="text-xs text-gray-400" id="preview-${i}">(Chưa có nội dung)</span>`;
+                btn.onclick = () => openBoardModal(i);
+                container.appendChild(btn);
+            }
+            calculatePrice();
+        }
+
+        function openBoardModal(idx) {
+            currentModalIdx = idx;
+            const data = boardsData[idx - 1];
+            
+            document.getElementById('modal-board-idx').innerText = idx;
+            document.getElementById('modal-subject').value = data.subject;
+            document.getElementById('modal-content').value = data.content;
+            
+            document.getElementById('board-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('board-modal').classList.add('hidden');
+        }
+
+        function saveBoardData() {
+            const subject = document.getElementById('modal-subject').value;
+            const content = document.getElementById('modal-content').value;
+            
+            // Validate sơ bộ
+            if (content.match(/[ABCD]\./)) { // Check trắc nghiệm đơn giản
+                 if(!confirm('Cảnh báo: Có vẻ bạn đang nhập trắc nghiệm (A. B. C...). Tiếp tục?')) return;
+            }
+
+            boardsData[currentModalIdx - 1] = { id: currentModalIdx, subject, content };
+            
+            // Cập nhật UI Preview
+            document.getElementById(`preview-${currentModalIdx}`).innerText = subject ? subject : "(Đã nhập)";
+            document.getElementById(`preview-${currentModalIdx}`).classList.add('text-green-600');
+            
+            closeModal();
+        }
+
+        // --- SUBMIT ORDER ---
+        async function submitOrder() {
+            if(!currentUser) return alert("Vui lòng đăng nhập!");
+            
+            const type = document.querySelector('input[name="orderType"]:checked').value;
+            const originalPrice = calculatePrice();
+            
+            let payload = {
+                user_id: currentUser.id,
+                type: type,
+                original_price: Math.round(originalPrice),
+                status: 'pending'
+            };
+
+            if (type === 'file') {
+                const fileInput = document.getElementById('file-upload');
+                if(fileInput.files.length === 0) return alert("Vui lòng chọn file!");
+                
+                // Demo: Chưa upload thật lên Storage (cần setup Storage bucket), tạm thời lấy tên file
+                payload.file_url = "demo_file_" + fileInput.files[0].name; 
+                payload.page_count = document.getElementById('page-count').value;
+                payload.font_size = document.getElementById('font-size').value;
+                payload.density = document.getElementById('density').value == 1 ? 'normal' : 'bold';
+                payload.is_landscape = document.getElementById('orientation').value === 'landscape';
+
+            } else {
+                const count = parseInt(document.getElementById('board-count').value);
+                if (count === 0) return alert("Vui lòng chọn số lượng bảng!");
+                // Check xem đã điền hết chưa
+                const emptyBoard = boardsData.find(b => !b.content);
+                if (emptyBoard) return alert(`Vui lòng điền nội dung cho Bảng ${emptyBoard.id}`);
+                
+                payload.board_count = count;
+                payload.boards_data = boardsData;
+                payload.room_number = document.getElementById('room-num').value;
+                payload.floor_number = document.getElementById('floor-num').value;
+            }
+
+            const { error } = await _supabase.from('orders').insert(payload);
+            if (error) {
+                alert("Lỗi: " + error.message);
+            } else {
+                alert("Tạo đơn hàng thành công!");
+                resetForm();
+                switchTab('my-orders');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('page-count').value = 1;
+            document.getElementById('board-count').value = 0;
+            document.getElementById('board-slots').innerHTML = '';
+            document.getElementById('total-price').innerText = '0 ₫';
+            // Clear inputs...
+        }
+
+        // --- QUẢN LÝ ĐƠN HÀNG (MY ORDERS) ---
+        async function loadMyOrders() {
+            const { data: orders } = await _supabase
+                .from('orders')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+            
+            const container = document.getElementById('orders-list');
+            container.innerHTML = '';
+            
+            if(!orders || orders.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">Chưa có đơn hàng nào.</p>';
+                return;
+            }
+
+            orders.forEach(order => {
+                const statusColor = {
+                    'pending': 'text-yellow-600 bg-yellow-100',
+                    'processing': 'text-blue-600 bg-blue-100',
+                    'payment_pending': 'text-orange-600 bg-orange-100',
+                    'completed': 'text-green-600 bg-green-100',
+                    'cancelled': 'text-gray-600 bg-gray-200'
+                };
+                
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded shadow border-l-4 ' + (order.status === 'pending' ? 'border-yellow-500' : 'border-gray-300');
+                
+                let detailHtml = '';
+                if(order.type === 'file') {
+                    detailHtml = `<p class="text-sm">File: <b>${order.file_url}</b> (${order.page_count} trang)</p>`;
+                } else {
+                    detailHtml = `<p class="text-sm">In Chữ: <b>${order.board_count} bảng</b> (Phòng ${order.room_number || '?'})</p>`;
+                }
+
+                // Nút chức năng
+                let actionsHtml = '';
+                if(order.status === 'pending') {
+                    actionsHtml += `<button onclick="cancelOrder('${order.id}')" class="text-red-500 text-sm hover:underline mr-3">Hủy đơn</button>`;
+                }
+                actionsHtml += `<button onclick="copyOrderContent('${order.id}')" class="text-blue-500 text-sm hover:underline">Sao chép</button>`;
+
+                // Xử lý giá tiền (Có thể đã bị admin chỉnh)
+                let priceDisplay = formatCurrency(order.final_price || order.original_price);
+                if(order.adjustment_fee !== 0) {
+                    priceDisplay += ` <span class="text-xs text-gray-400 line-through">${formatCurrency(order.original_price)}</span>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="px-2 py-1 rounded text-xs font-bold ${statusColor[order.status] || ''}">${order.status.toUpperCase()}</span>
+                        <span class="font-bold text-red-600">${priceDisplay}</span>
+                    </div>
+                    ${detailHtml}
+                    <div class="mt-2 pt-2 border-t flex justify-between items-center">
+                        <span class="text-xs text-gray-400">${formatDate(order.created_at)}</span>
+                        <div>${actionsHtml}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function cancelOrder(orderId) {
+            if(!confirm("Bạn chắc chắn muốn hủy đơn này?")) return;
+            // Check lại realtime xem admin đã nhận chưa (để an toàn)
+            const { data } = await _supabase.from('orders').select('status').eq('id', orderId).single();
+            if(data.status !== 'pending') {
+                alert("Admin đã tiếp nhận đơn này, không thể hủy. Vui lòng chat để hỗ trợ.");
+                loadMyOrders();
+                return;
+            }
+            
+            await _supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+            loadMyOrders();
+        }
+
+        async function copyOrderContent(orderId) {
+            const { data } = await _supabase.from('orders').select('*').eq('id', orderId).single();
+            let textToCopy = "";
+            
+            if(data.type === 'text' && data.boards_data) {
+                data.boards_data.forEach(b => {
+                    textToCopy += `[BẢNG ${b.id} - ${b.subject}]\n${b.content}\n----------------\n`;
+                });
+            } else {
+                textToCopy = `Đơn in file: ${data.file_url}, ${data.page_count} trang.`;
+            }
+            
+            navigator.clipboard.writeText(textToCopy);
+            alert("Đã sao chép nội dung!");
+        }
+
+        // --- CHAT SYSTEM ---
+        function toggleChat() {
+            const win = document.getElementById('chat-window');
+            win.classList.toggle('hidden');
+            if(!win.classList.contains('hidden')) loadMessages();
+        }
+
+        async function loadMessages() {
+            const { data } = await _supabase
+                .from('messages')
+                .select('*')
+                .or(`sender_id.eq.${currentUser.id},is_admin.eq.true`) // Lấy tin của mình và tin của admin
+                .order('created_at', { ascending: true });
+                
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '';
+            data.forEach(msg => appendMessage(msg));
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            await _supabase.from('messages').insert({
+                sender_id: currentUser.id,
+                content: text,
+                is_admin: false
+            });
+            input.value = '';
+        }
+
+        function appendMessage(msg) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            const isMe = msg.sender_id === currentUser.id;
+            
+            div.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+            div.innerHTML = `
+                <div class="max-w-[80%] p-2 rounded text-sm ${isMe ? 'bg-blue-100 text-blue-900' : 'bg-gray-200 text-gray-900'}">
+                    ${msg.content}
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // --- REALTIME SUBSCRIPTION ---
+        function subscribeRealtime() {
+            _supabase
+                .channel('public:orders')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${currentUser.id}` }, payload => {
+                    // Khi admin cập nhật trạng thái đơn -> Reload list
+                    if(document.getElementById('view-my-orders').classList.contains('hidden') === false) {
+                        loadMyOrders();
+                    }
+                    // Thông báo Toast đơn giản (Có thể nâng cấp)
+                    console.log("Đơn hàng cập nhật:", payload.new);
+                })
+                .subscribe();
+
+            _supabase
+                .channel('public:messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                     // Nếu tin nhắn mới là của admin hoặc của mình thì hiện lên
+                     if(payload.new.sender_id === currentUser.id || payload.new.is_admin) {
+                         appendMessage(payload.new);
+                     }
+                })
+                .subscribe();
+        }
+
+    </script>
 </body>
 </html>
