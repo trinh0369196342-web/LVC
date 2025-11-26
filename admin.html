@@ -10,16 +10,13 @@
         .hidden { display: none !important; }
         .fade-in { animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Hiệu ứng cho hàng khi hover */
         tr:hover td { background-color: #f9fafb; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans h-screen flex overflow-hidden">
 
     <aside class="w-64 bg-gray-900 text-white flex flex-col">
-        <div class="p-4 text-center font-bold text-xl border-b border-gray-700">
-            ADMIN PANEL
-        </div>
+        <div class="p-4 text-center font-bold text-xl border-b border-gray-700">ADMIN PANEL</div>
         <nav class="flex-1 p-4 space-y-2">
             <button onclick="switchView('orders')" id="nav-orders" class="w-full text-left p-3 rounded hover:bg-gray-800 bg-gray-800">📦 Quản lý Đơn hàng</button>
             <button onclick="switchView('users')" id="nav-users" class="w-full text-left p-3 rounded hover:bg-gray-800">👥 Quản lý Tài khoản</button>
@@ -38,7 +35,6 @@
     </aside>
 
     <main class="flex-1 flex flex-col overflow-hidden">
-        
         <header class="bg-white shadow p-4 z-10 flex justify-between items-center">
             <h2 id="page-title" class="text-xl font-bold text-gray-800">Quản lý Đơn hàng</h2>
         </header>
@@ -46,20 +42,16 @@
         <div class="flex-1 overflow-auto p-6 relative">
             
             <div id="view-orders" class="fade-in">
-                
                 <div class="flex flex-col md:flex-row gap-4 mb-4 justify-between">
                     <div class="relative w-full md:w-1/3">
-                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="🔍 Tìm tên, email hoặc mã đơn..." class="w-full pl-10 pr-4 py-2 border rounded shadow-sm focus:outline-none focus:border-blue-500">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        </div>
+                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="🔍 Tìm tên, email hoặc mã đơn..." class="w-full pl-10 pr-4 py-2 border rounded shadow-sm outline-none">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</div>
                     </div>
-
                     <div class="flex gap-2 overflow-x-auto pb-2">
-                        <button onclick="filterOrders('all')" class="whitespace-nowrap px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm font-medium">Tất cả</button>
-                        <button onclick="filterOrders('pending')" class="whitespace-nowrap px-3 py-2 rounded bg-yellow-100 text-yellow-800 text-sm font-bold border border-yellow-200">Mới</button>
-                        <button onclick="filterOrders('processing')" class="whitespace-nowrap px-3 py-2 rounded bg-blue-100 text-blue-800 text-sm border border-blue-200">Đang xử lý</button>
-                        <button onclick="filterOrders('payment_pending')" class="whitespace-nowrap px-3 py-2 rounded bg-orange-100 text-orange-800 text-sm border border-orange-200">Chờ TT</button>
+                        <button onclick="filterOrders('all')" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm">Tất cả</button>
+                        <button onclick="filterOrders('pending')" class="px-3 py-2 rounded bg-yellow-100 text-yellow-800 text-sm border border-yellow-200">Mới</button>
+                        <button onclick="filterOrders('processing')" class="px-3 py-2 rounded bg-blue-100 text-blue-800 text-sm border border-blue-200">Đang xử lý</button>
+                        <button onclick="filterOrders('payment_pending')" class="px-3 py-2 rounded bg-orange-100 text-orange-800 text-sm border border-orange-200">Chờ TT</button>
                     </div>
                 </div>
 
@@ -69,18 +61,15 @@
                             <tr>
                                 <th class="p-4 border-b">Mã / Thời gian</th>
                                 <th class="p-4 border-b">Khách hàng</th>
-                                <th class="p-4 border-b">Chi tiết đơn</th>
+                                <th class="p-4 border-b">Chi tiết</th>
                                 <th class="p-4 border-b">Tổng tiền</th>
                                 <th class="p-4 border-b">Trạng thái</th>
                                 <th class="p-4 border-b">Hành động</th>
                             </tr>
                         </thead>
-                        <tbody id="orders-table-body" class="text-sm text-gray-700">
-                            </tbody>
+                        <tbody id="orders-table-body" class="text-sm text-gray-700"></tbody>
                     </table>
-                    <div id="no-result" class="hidden p-8 text-center text-gray-500">
-                        Không tìm thấy đơn hàng nào khớp với từ khóa.
-                    </div>
+                    <div id="no-result" class="hidden p-8 text-center text-gray-500">Không tìm thấy đơn hàng nào.</div>
                 </div>
             </div>
 
@@ -91,41 +80,39 @@
                             <tr>
                                 <th class="p-4">Avatar</th>
                                 <th class="p-4">Email / Tên</th>
-                                <th class="p-4">Vai trò (Role)</th>
+                                <th class="p-4">Vai trò</th>
                                 <th class="p-4">Ngày tham gia</th>
                                 <th class="p-4">Hành động</th>
                             </tr>
                         </thead>
-                        <tbody id="users-table-body">
-                            </tbody>
+                        <tbody id="users-table-body"></tbody>
                     </table>
                 </div>
             </div>
 
             <div id="view-settings" class="hidden fade-in max-w-lg">
                 <div class="bg-white p-6 rounded shadow">
-                    <h3 class="font-bold text-lg mb-4 text-blue-800">Bảng giá Gốc (Hệ thống)</h3>
-                    <label class="block mb-2 text-sm font-medium">Giá in giấy (VNĐ/Trang)</label>
+                    <h3 class="font-bold text-lg mb-4 text-blue-800">Bảng giá Gốc</h3>
+                    <label class="block mb-2 text-sm">Giá in giấy (VNĐ/Trang)</label>
                     <input type="number" id="set-page-price" class="w-full border p-2 rounded mb-4">
-                    <label class="block mb-2 text-sm font-medium">Giá in bảng chữ (VNĐ/Bảng)</label>
+                    <label class="block mb-2 text-sm">Giá in bảng chữ (VNĐ/Bảng)</label>
                     <input type="number" id="set-board-price" class="w-full border p-2 rounded mb-4">
-                    <label class="block mb-2 text-sm font-medium">Phí tăng thêm độ đậm (%)</label>
+                    <label class="block mb-2 text-sm">Phí tăng thêm độ đậm (%)</label>
                     <input type="number" id="set-density" class="w-full border p-2 rounded mb-6">
                     <button onclick="saveSettings()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Lưu Cấu Hình</button>
                 </div>
             </div>
-
         </div>
     </main>
 
     <div id="modal-price" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded w-96 shadow-lg">
             <h3 class="font-bold text-lg mb-4">Chỉnh sửa giá đơn hàng</h3>
-            <p class="text-sm text-gray-500 mb-2">Giá gốc máy tính: <span id="modal-org-price" class="font-bold"></span></p>
+            <p class="text-sm text-gray-500 mb-2">Giá gốc: <span id="modal-org-price" class="font-bold"></span></p>
             <label class="block text-sm font-medium">Giá chốt thực tế (VNĐ)</label>
             <input type="number" id="modal-new-price" class="w-full border p-2 rounded mb-3 font-bold text-red-600">
             <label class="block text-sm font-medium">Lý do điều chỉnh</label>
-            <input type="text" id="modal-reason" class="w-full border p-2 rounded mb-4" placeholder="VD: File tốn mực, Khách quen giảm giá...">
+            <input type="text" id="modal-reason" class="w-full border p-2 rounded mb-4" placeholder="VD: Tốn mực...">
             <div class="flex justify-end gap-2">
                 <button onclick="document.getElementById('modal-price').classList.add('hidden')" class="bg-gray-200 px-4 py-2 rounded">Hủy</button>
                 <button onclick="confirmUpdatePrice()" class="bg-blue-600 text-white px-4 py-2 rounded">Cập nhật</button>
@@ -134,6 +121,5 @@
     </div>
 
     <script src="script_admin.js"></script>
-
 </body>
 </html>

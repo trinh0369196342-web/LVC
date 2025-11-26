@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: script_index.js (ĐÃ FIX LỖI)
-// ============================================================
+// CẤU HÌNH SUPABASE
 const SUPABASE_URL = 'https://gvsbcjhohvrgaowflcwc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2JjamhvaHZyZ2Fvd2ZsY3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNzIyNTYsImV4cCI6MjA3OTY0ODI1Nn0.TMkVz82efXxfOazfhzKuWP-DYqVZY8M60WrtA4O77Xc';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -14,19 +12,17 @@ let GLOBAL_SETTINGS = { price_per_page: 500, price_per_board: 5000, density_fee_
 const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 const formatDate = (dateString) => new Date(dateString).toLocaleString('vi-VN');
 
-// 1. AUTH & INIT
+// 1. AUTH
 async function checkUser() {
     const { data: { user } } = await _supabase.auth.getUser();
     if (user) {
         currentUser = user;
         document.getElementById('auth-container').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
-        
-        // Load dữ liệu
         loadProfile();
         loadSettings(); 
         subscribeRealtime(); 
-        loadMessages(); // Load tin nhắn cũ ngay khi vào
+        loadMessages();
     }
 }
 checkUser();
@@ -40,9 +36,7 @@ async function handleLogin() {
 
     try {
         if (isRegistering) {
-            const { error } = await _supabase.auth.signUp({
-                email, password, options: { data: { full_name: fullName } }
-            });
+            const { error } = await _supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
             if (error) throw error;
             alert('Đăng ký thành công! Vui lòng đăng nhập.');
             toggleAuthMode();
@@ -68,30 +62,26 @@ async function handleLogout() {
     location.reload();
 }
 
-// 2. PROFILE (NÂNG CẤP)
+// 2. PROFILE
 async function loadProfile() {
     try {
         const { data, error } = await _supabase.from('profiles').select('*').eq('id', currentUser.id).single();
-        
         if (data) {
             document.getElementById('user-display-name').innerText = data.full_name || data.email;
-            
-            // Điền dữ liệu vào form Profile
+            // Fill form
             document.getElementById('pro-fullname').value = data.full_name || '';
             document.getElementById('pro-email').value = data.email || '';
             document.getElementById('pro-phone').value = data.phone || '';
             document.getElementById('pro-address').value = data.address || '';
             document.getElementById('pro-avatar-url').value = data.avatar_url || '';
-            
             if(data.avatar_url) document.getElementById('profile-avatar').src = data.avatar_url;
 
+            // CHUYỂN HƯỚNG ADMIN
             if (data.role === 'admin') {
                if(confirm('Bạn là Admin. Chuyển sang trang quản trị?')) window.location.href = 'admin.html';
             }
         }
-    } catch (err) {
-        console.error("Lỗi load profile:", err);
-    }
+    } catch (err) { console.error(err); }
 }
 
 async function updateProfile() {
@@ -101,16 +91,12 @@ async function updateProfile() {
         address: document.getElementById('pro-address').value,
         avatar_url: document.getElementById('pro-avatar-url').value,
     };
-
     const { error } = await _supabase.from('profiles').update(updates).eq('id', currentUser.id);
     if(error) alert("Lỗi: " + error.message);
-    else {
-        alert("Cập nhật thông tin thành công!");
-        loadProfile(); // Reload ảnh/tên
-    }
+    else { alert("Cập nhật thành công!"); loadProfile(); }
 }
 
-// 3. LOGIC GIAO DIỆN & TÍNH TIỀN (GIỮ NGUYÊN)
+// 3. LOGIC
 async function loadSettings() {
     const { data } = await _supabase.from('settings').select('*').single();
     if (data) GLOBAL_SETTINGS = data;
@@ -165,7 +151,6 @@ function calculatePrice() {
     return total;
 }
 
-// 4. SUBMIT ORDER & FORM (GIỮ NGUYÊN)
 function renderBoardSlots() {
     const count = parseInt(document.getElementById('board-count').value);
     const container = document.getElementById('board-slots');
@@ -197,7 +182,7 @@ function saveBoardData() {
     const subject = document.getElementById('modal-subject').value;
     const content = document.getElementById('modal-content').value;
     if (content.match(/[ABCD]\./)) { 
-         if(!confirm('Cảnh báo: Có vẻ bạn đang nhập trắc nghiệm (A. B. C...). Tiếp tục?')) return;
+         if(!confirm('Cảnh báo: Có vẻ bạn đang nhập trắc nghiệm. Tiếp tục?')) return;
     }
     boardsData[currentModalIdx - 1] = { id: currentModalIdx, subject, content };
     document.getElementById(`preview-${currentModalIdx}`).innerText = subject ? subject : "(Đã nhập)";
@@ -247,16 +232,11 @@ function resetForm() {
     document.getElementById('total-price').innerText = '0 ₫';
 }
 
-// 5. QUẢN LÝ ĐƠN HÀNG (GIỮ NGUYÊN)
 async function loadMyOrders() {
     const { data: orders } = await _supabase.from('orders').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
     const container = document.getElementById('orders-list');
     container.innerHTML = '';
-    
-    if(!orders || orders.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500">Chưa có đơn hàng nào.</p>';
-        return;
-    }
+    if(!orders || orders.length === 0) { container.innerHTML = '<p class="text-center text-gray-500">Chưa có đơn hàng nào.</p>'; return; }
 
     orders.forEach(order => {
         const statusColor = { 'pending': 'text-yellow-600 bg-yellow-100', 'processing': 'text-blue-600 bg-blue-100', 'payment_pending': 'text-orange-600 bg-orange-100', 'completed': 'text-green-600 bg-green-100', 'cancelled': 'text-gray-600 bg-gray-200' };
@@ -289,11 +269,9 @@ async function copyOrderContent(orderId) {
     alert("Đã sao chép!");
 }
 
-// 6. CHAT SUPPORT (FIXED)
 function toggleChat() {
     const win = document.getElementById('chat-window');
     win.classList.toggle('hidden');
-    // Reset badge
     document.getElementById('chat-badge').classList.add('hidden');
     if(!win.classList.contains('hidden')) {
         const container = document.getElementById('chat-messages');
@@ -303,16 +281,7 @@ function toggleChat() {
 
 async function loadMessages() {
     if(!currentUser) return;
-    // Lấy tin nhắn của mình gửi HOẶC tin nhắn admin gửi
-    // Lưu ý: Logic đơn giản này sẽ hiện tất cả tin admin gửi. 
-    // Nếu muốn chat 1-1 chính xác, cần thêm cột 'receiver_id' trong DB.
-    // Với mã hiện tại: Admin chat thì tất cả khách đều thấy nếu không filter kỹ. 
-    // Sửa nhanh: Khách chỉ thấy tin của mình.
-    
-    const { data } = await _supabase.from('messages').select('*')
-        .or(`sender_id.eq.${currentUser.id},is_admin.eq.true`)
-        .order('created_at', { ascending: true });
-        
+    const { data } = await _supabase.from('messages').select('*').or(`sender_id.eq.${currentUser.id},is_admin.eq.true`).order('created_at', { ascending: true });
     const container = document.getElementById('chat-messages');
     container.innerHTML = '';
     data.forEach(msg => appendMessage(msg));
@@ -323,27 +292,17 @@ async function sendMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if(!text) return;
-    
-    const { error } = await _supabase.from('messages').insert({ 
-        sender_id: currentUser.id, 
-        content: text, 
-        is_admin: false 
-    });
-    
-    if(error) console.error(error);
-    else input.value = '';
+    const { error } = await _supabase.from('messages').insert({ sender_id: currentUser.id, content: text, is_admin: false });
+    if(!error) input.value = '';
 }
 
 function appendMessage(msg) {
     const container = document.getElementById('chat-messages');
     const div = document.createElement('div');
     const isMe = msg.sender_id === currentUser.id;
-    
-    // Nếu là tin admin, hiện màu khác
     const bgColor = isMe ? 'bg-blue-100 text-blue-900' : (msg.is_admin ? 'bg-gray-200 text-gray-900 border border-gray-300' : 'bg-gray-100');
     const align = isMe ? 'justify-end' : 'justify-start';
     const label = !isMe && msg.is_admin ? '<span class="text-xs font-bold text-red-500 block mb-1">Admin</span>' : '';
-
     div.className = `flex ${align}`;
     div.innerHTML = `<div class="max-w-[80%] p-2 rounded text-sm ${bgColor}">${label}${msg.content}</div>`;
     container.appendChild(div);
@@ -352,15 +311,10 @@ function appendMessage(msg) {
 
 function subscribeRealtime() {
     _supabase.channel('public:orders').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${currentUser.id}` }, () => { loadMyOrders(); }).subscribe();
-    
     _supabase.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-         // Nếu tin của mình hoặc tin từ Admin
          if(payload.new.sender_id === currentUser.id || payload.new.is_admin) {
              appendMessage(payload.new);
-             // Nếu Chat đang đóng và có tin mới -> Hiện chấm đỏ
-             if(document.getElementById('chat-window').classList.contains('hidden')) {
-                 document.getElementById('chat-badge').classList.remove('hidden');
-             }
+             if(document.getElementById('chat-window').classList.contains('hidden')) document.getElementById('chat-badge').classList.remove('hidden');
          }
     }).subscribe();
 }
