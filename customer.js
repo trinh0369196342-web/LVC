@@ -24,6 +24,8 @@ async function initializeApp() {
     try {
         // Kiểm tra trạng thái đăng nhập
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('Session:', session);
+        
         if (session) {
             console.log('Đã đăng nhập:', session.user.email);
             await loadUserProfile(session.user.id);
@@ -53,6 +55,7 @@ async function initializeApp() {
 // Tải thông tin user profile
 async function loadUserProfile(userId) {
     try {
+        console.log('Đang tải user profile cho:', userId);
         const { data, error } = await supabase
             .from('users')
             .select('*')
@@ -60,13 +63,13 @@ async function loadUserProfile(userId) {
             .single();
             
         if (error) {
-            console.log('Chưa có user profile, tạo mới...');
+            console.log('Chưa có user profile, tạo mới...', error);
             await createUserProfile(userId);
             return;
         }
         
         currentUser = data;
-        console.log('User profile:', currentUser);
+        console.log('User profile loaded:', currentUser);
         
     } catch (error) {
         console.error('Lỗi tải user profile:', error);
@@ -77,26 +80,42 @@ async function loadUserProfile(userId) {
 async function createUserProfile(userId) {
     try {
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('Creating profile for user:', user);
+        
+        const userData = {
+            id: userId,
+            name: user.user_metadata?.name || user.email.split('@')[0],
+            email: user.email,
+            phone: user.user_metadata?.phone || '',
+            role: 'customer',
+            status: 'active'
+        };
+        
+        console.log('User data to insert:', userData);
         
         const { data, error } = await supabase
             .from('users')
-            .insert([
-                {
-                    id: userId,
-                    name: user.user_metadata?.name || user.email.split('@')[0],
-                    email: user.email,
-                    phone: user.user_metadata?.phone || '',
-                    role: 'customer',
-                    status: 'active'
-                }
-            ])
+            .insert([userData])
             .select()
             .single();
             
-        if (error) throw error;
+        if (error) {
+            console.error('Lỗi tạo user profile:', error);
+            // Thử cập nhật nếu đã tồn tại
+            const { data: updateData, error: updateError } = await supabase
+                .from('users')
+                .update(userData)
+                .eq('id', userId)
+                .select()
+                .single();
+                
+            if (updateError) throw updateError;
+            currentUser = updateData;
+        } else {
+            currentUser = data;
+        }
         
-        currentUser = data;
-        console.log('Đã tạo user profile:', currentUser);
+        console.log('Đã tạo/cập nhật user profile:', currentUser);
         
     } catch (error) {
         console.error('Lỗi tạo user profile:', error);
@@ -317,24 +336,29 @@ async function handleLogin() {
         
         if (error) throw error;
         
-        // Tải user profile
-        await loadUserProfile(data.user.id);
+        console.log('Đăng nhập thành công, đang tải profile...');
         
-        showMessage('Đăng nhập thành công!');
-        
-        // Kiểm tra và chuyển hướng
-        setTimeout(() => {
+        // Đợi một chút để đảm bảo session được lưu
+        setTimeout(async () => {
+            // Tải user profile
+            await loadUserProfile(data.user.id);
+            
+            showMessage('Đăng nhập thành công!');
+            
+            // Kiểm tra và chuyển hướng
             if (currentUser && currentUser.role === 'admin') {
                 window.location.href = 'admin.html';
             } else {
                 updateAccountDisplay();
                 updateAdminLinkVisibility();
+                // Tải lại trang để cập nhật trạng thái
+                location.reload();
             }
         }, 1000);
         
     } catch (error) {
         console.error('Lỗi đăng nhập:', error);
-        showMessage('Email hoặc mật khẩu không đúng');
+        showMessage('Email hoặc mật khẩu không đúng: ' + error.message);
     }
 }
 
@@ -357,22 +381,37 @@ async function handleAdminLogin() {
         
         if (error) throw error;
         
-        // Tải user profile
-        await loadUserProfile(data.user.id);
+        console.log('Admin login successful, loading profile...');
         
-        if (!currentUser || currentUser.role !== 'admin') {
-            showMessage('Tài khoản không có quyền admin');
-            await supabase.auth.signOut();
-            return;
-        }
-        
-        showMessage('Đăng nhập admin thành công!');
-        updateAdminAccountDisplay();
-        updateCustomerLinkVisibility();
+        // Đợi một chút để đảm bảo session được lưu
+        setTimeout(async () => {
+            // Tải user profile
+            await loadUserProfile(data.user.id);
+            
+            if (!currentUser) {
+                showMessage('Lỗi: Không thể tải thông tin user');
+                return;
+            }
+            
+            console.log('Current user role:', currentUser.role);
+            
+            if (currentUser.role !== 'admin') {
+                showMessage('Tài khoản không có quyền admin. Vui lòng liên hệ quản trị viên.');
+                await supabase.auth.signOut();
+                return;
+            }
+            
+            showMessage('Đăng nhập admin thành công!');
+            updateAdminAccountDisplay();
+            updateCustomerLinkVisibility();
+            // Tải lại trang để cập nhật trạng thái
+            location.reload();
+            
+        }, 1000);
         
     } catch (error) {
         console.error('Lỗi đăng nhập admin:', error);
-        showMessage('Thông tin đăng nhập không đúng');
+        showMessage('Thông tin đăng nhập không đúng: ' + error.message);
     }
 }
 
@@ -416,7 +455,7 @@ async function register() {
         if (error) throw error;
         
         if (data.user) {
-            showMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.');
+            showMessage('Đăng ký thành công! Vui lòng đăng nhập.');
             showLoginForm();
         }
         
@@ -436,6 +475,11 @@ async function logout() {
         const adminLink = document.querySelector('footer a[href="admin.html"]');
         if (adminLink) adminLink.style.display = 'block';
         
+        // Tải lại trang để cập nhật trạng thái
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+        
     } catch (error) {
         console.error('Lỗi đăng xuất:', error);
     }
@@ -450,6 +494,11 @@ async function adminLogout() {
         
         const customerLink = document.querySelector('footer a[href="index.html"]');
         if (customerLink) customerLink.style.display = 'block';
+        
+        // Tải lại trang để cập nhật trạng thái
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
         
     } catch (error) {
         console.error('Lỗi đăng xuất admin:', error);
@@ -1363,21 +1412,28 @@ function resetOrderForm() {
 
 function checkLoginStatus() {
     if (currentUser) {
+        console.log('Current user:', currentUser);
         if (currentUser.role === 'admin') {
             window.location.href = 'admin.html';
             return;
         }
         updateAccountDisplay();
+    } else {
+        console.log('No current user');
     }
 }
 
 function checkAdminLoginStatus() {
     if (currentUser) {
+        console.log('Admin check - Current user:', currentUser);
         if (currentUser.role !== 'admin') {
+            console.log('User is not admin, redirecting...');
             window.location.href = 'index.html';
             return;
         }
         updateAdminAccountDisplay();
+    } else {
+        console.log('No user for admin check');
     }
 }
 
@@ -1386,6 +1442,8 @@ function updateAccountDisplay() {
     const registerForm = document.getElementById('register-form');
     const accountInfo = document.getElementById('account-info');
     const userDetails = document.getElementById('user-details');
+    
+    console.log('Updating account display, currentUser:', currentUser);
     
     if (currentUser && loginForm && registerForm && accountInfo && userDetails) {
         loginForm.style.display = 'none';
@@ -1398,10 +1456,13 @@ function updateAccountDisplay() {
             <p><strong>SĐT:</strong> ${currentUser.phone || 'Chưa cập nhật'}</p>
             <p><strong>Vai trò:</strong> ${currentUser.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}</p>
         `;
+        
+        console.log('Account info updated for user:', currentUser.name);
     } else if (loginForm && registerForm && accountInfo) {
         loginForm.style.display = 'block';
         registerForm.style.display = 'none';
         accountInfo.style.display = 'none';
+        console.log('Showing login form (no user)');
     }
 }
 
@@ -1409,6 +1470,8 @@ function updateAdminAccountDisplay() {
     const loginForm = document.getElementById('admin-login-form');
     const accountInfo = document.getElementById('admin-account-info');
     const adminDetails = document.getElementById('admin-details');
+    
+    console.log('Updating admin account display, currentUser:', currentUser);
     
     if (currentUser && loginForm && accountInfo && adminDetails) {
         loginForm.style.display = 'none';
@@ -1419,9 +1482,12 @@ function updateAdminAccountDisplay() {
             <p><strong>Email:</strong> ${currentUser.email}</p>
             <p><strong>Vai trò:</strong> Quản trị viên</p>
         `;
+        
+        console.log('Admin account info updated');
     } else if (loginForm && accountInfo) {
         loginForm.style.display = 'block';
         accountInfo.style.display = 'none';
+        console.log('Showing admin login form (no user)');
     }
 }
 
