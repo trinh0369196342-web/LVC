@@ -1,4 +1,6 @@
-// CẤU HÌNH SUPABASE
+// ============================================================
+// FILE: script_index.js (BẢN ĐÃ GHÉP QR CODE & TỐI ƯU)
+// ============================================================
 const SUPABASE_URL = 'https://gvsbcjhohvrgaowflcwc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2JjamhvaHZyZ2Fvd2ZsY3djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNzIyNTYsImV4cCI6MjA3OTY0ODI1Nn0.TMkVz82efXxfOazfhzKuWP-DYqVZY8M60WrtA4O77Xc';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -7,12 +9,15 @@ let currentUser = null;
 let boardsData = []; 
 let currentModalIdx = 0;
 let isRegistering = false;
-let GLOBAL_SETTINGS = { price_per_page: 500, price_per_board: 5000, density_fee_percent: 20 };
+// Thêm qr_code_url vào setting mặc định để tránh lỗi
+let GLOBAL_SETTINGS = { price_per_page: 500, price_per_board: 5000, density_fee_percent: 20, qr_code_url: '' };
 
 const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 const formatDate = (dateString) => new Date(dateString).toLocaleString('vi-VN');
 
-// 1. AUTH
+// ============================================================
+// 1. AUTH & INIT
+// ============================================================
 async function checkUser() {
     const { data: { user } } = await _supabase.auth.getUser();
     if (user) {
@@ -22,7 +27,7 @@ async function checkUser() {
         loadProfile();
         loadSettings(); 
         subscribeRealtime(); 
-        loadMessages();
+        loadMessages(); 
     }
 }
 checkUser();
@@ -62,13 +67,14 @@ async function handleLogout() {
     location.reload();
 }
 
+// ============================================================
 // 2. PROFILE
+// ============================================================
 async function loadProfile() {
     try {
         const { data, error } = await _supabase.from('profiles').select('*').eq('id', currentUser.id).single();
         if (data) {
             document.getElementById('user-display-name').innerText = data.full_name || data.email;
-            // Fill form
             document.getElementById('pro-fullname').value = data.full_name || '';
             document.getElementById('pro-email').value = data.email || '';
             document.getElementById('pro-phone').value = data.phone || '';
@@ -76,7 +82,6 @@ async function loadProfile() {
             document.getElementById('pro-avatar-url').value = data.avatar_url || '';
             if(data.avatar_url) document.getElementById('profile-avatar').src = data.avatar_url;
 
-            // CHUYỂN HƯỚNG ADMIN
             if (data.role === 'admin') {
                if(confirm('Bạn là Admin. Chuyển sang trang quản trị?')) window.location.href = 'admin.html';
             }
@@ -96,7 +101,9 @@ async function updateProfile() {
     else { alert("Cập nhật thành công!"); loadProfile(); }
 }
 
-// 3. LOGIC
+// ============================================================
+// 3. LOGIC TẠO ĐƠN & TÍNH GIÁ
+// ============================================================
 async function loadSettings() {
     const { data } = await _supabase.from('settings').select('*').single();
     if (data) GLOBAL_SETTINGS = data;
@@ -114,7 +121,7 @@ function switchTab(tabId) {
     } else if (tabId === 'my-orders') {
         document.getElementById('view-my-orders').classList.remove('hidden');
         document.getElementById('tab-list').className = 'flex-1 py-3 text-center active-tab';
-        loadMyOrders();
+        loadMyOrders(); // Gọi hàm load mới
     } else {
         document.getElementById('view-profile').classList.remove('hidden');
         document.getElementById('tab-profile').className = 'flex-1 py-3 text-center active-tab';
@@ -190,78 +197,48 @@ function saveBoardData() {
     closeModal();
 }
 
-// --- CẬP NHẬT HÀM NÀY TRONG script_index.js ---
 async function submitOrder() {
     if(!currentUser) return alert("Vui lòng đăng nhập!");
-    
     const type = document.querySelector('input[name="orderType"]:checked').value;
-    // Tính lại tiền lần cuối để chính xác
     const originalPrice = calculatePrice();
     
-    let payload = {
-        user_id: currentUser.id,
-        type: type,
-        original_price: Math.round(originalPrice),
-        status: 'pending'
-    };
+    let payload = { user_id: currentUser.id, type: type, original_price: Math.round(originalPrice), status: 'pending' };
 
     if (type === 'file') {
         const fileInput = document.getElementById('file-upload');
+        if(fileInput.files.length === 0) return alert("Vui lòng chọn file!");
+        
         const file = fileInput.files[0];
-        
-        if (!file) return alert("Vui lòng chọn file cần in!");
-
-        // 1. TẠO TÊN FILE DUY NHẤT (Tránh trùng)
         const fileName = `uploads/${Date.now()}_${file.name.replace(/\s/g, '_')}`;
-
-        // 2. UPLOAD LÊN SUPABASE STORAGE (Bucket tên là 'files')
-        // Lưu ý: Bạn phải tạo Bucket 'files' chế độ Public trong Supabase trước
-        const { data: uploadData, error: uploadError } = await _supabase.storage
-            .from('files') // Tên bucket
-            .upload(fileName, file);
-
-        if (uploadError) {
-            console.error(uploadError);
-            return alert("Lỗi tải file lên: " + uploadError.message);
-        }
-
-        // 3. LẤY LINK TẢI VỀ (PUBLIC URL)
+        const { data: uploadData, error: uploadError } = await _supabase.storage.from('files').upload(fileName, file);
+        if (uploadError) return alert("Lỗi upload: " + uploadError.message);
+        
         const { data: urlData } = _supabase.storage.from('files').getPublicUrl(fileName);
+        payload.file_url = urlData.publicUrl; 
         
-        // Gán link thật vào đơn hàng
-        payload.file_url = urlData.publicUrl;
-        
-        // Các thông số khác
         payload.page_count = document.getElementById('page-count').value;
         payload.font_size = document.getElementById('font-size').value;
         payload.density = document.getElementById('density').value == 1 ? 'normal' : 'bold';
         payload.is_landscape = document.getElementById('orientation').value === 'landscape';
-
     } else {
-        // Logic in chữ (Giữ nguyên)
         const count = parseInt(document.getElementById('board-count').value);
         if (count === 0) return alert("Vui lòng chọn số lượng bảng!");
         const emptyBoard = boardsData.find(b => !b.content);
         if (emptyBoard) return alert(`Vui lòng điền nội dung cho Bảng ${emptyBoard.id}`);
-        
         payload.board_count = count;
         payload.boards_data = boardsData;
         payload.room_number = document.getElementById('room-num').value;
         payload.floor_number = document.getElementById('floor-num').value;
     }
 
-    // Gửi đơn hàng vào Database
     const { error } = await _supabase.from('orders').insert(payload);
-    
-    if (error) {
-        alert("Lỗi tạo đơn: " + error.message);
-    } else {
+    if (error) alert("Lỗi: " + error.message);
+    else {
         alert("Tạo đơn hàng thành công!");
         resetForm();
         switchTab('my-orders');
     }
 }
-
 
 function resetForm() {
     document.getElementById('page-count').value = 1;
@@ -270,23 +247,99 @@ function resetForm() {
     document.getElementById('total-price').innerText = '0 ₫';
 }
 
+// ============================================================
+// 4. QUẢN LÝ ĐƠN HÀNG (ĐÃ CẬP NHẬT QR CODE)
+// ============================================================
+// === TÌM ĐOẠN NÀY TRONG FILE script_index.js VÀ THAY THẾ ===
+
 async function loadMyOrders() {
-    const { data: orders } = await _supabase.from('orders').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+    const { data: orders } = await _supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+    
     const container = document.getElementById('orders-list');
     container.innerHTML = '';
-    if(!orders || orders.length === 0) { container.innerHTML = '<p class="text-center text-gray-500">Chưa có đơn hàng nào.</p>'; return; }
+    
+    if(!orders || orders.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500">Chưa có đơn hàng nào.</p>';
+        return;
+    }
+
+    // --- SỬA ĐỔI TẠI ĐÂY ---
+    // Bắt buộc sử dụng ảnh trong thư mục IMG, bỏ qua GLOBAL_SETTINGS
+    const QR_LINK_FINAL = "IMG/IMG_0542.jpeg"; 
+    // ------------------------
 
     orders.forEach(order => {
-        const statusColor = { 'pending': 'text-yellow-600 bg-yellow-100', 'processing': 'text-blue-600 bg-blue-100', 'payment_pending': 'text-orange-600 bg-orange-100', 'completed': 'text-green-600 bg-green-100', 'cancelled': 'text-gray-600 bg-gray-200' };
-        let detailHtml = order.type === 'file' ? `<p class="text-sm">File: <b>${order.file_url}</b> (${order.page_count} trang)</p>` : `<p class="text-sm">In Chữ: <b>${order.board_count} bảng</b> (Phòng ${order.room_number || '?'})</p>`;
-        let actionsHtml = order.status === 'pending' ? `<button onclick="cancelOrder('${order.id}')" class="text-red-500 text-sm hover:underline mr-3">Hủy đơn</button>` : '';
-        actionsHtml += `<button onclick="copyOrderContent('${order.id}')" class="text-blue-500 text-sm hover:underline">Sao chép</button>`;
-        let priceDisplay = formatCurrency(order.final_price || order.original_price);
-        if(order.adjustment_fee !== 0) priceDisplay += ` <span class="text-xs text-gray-400 line-through">${formatCurrency(order.original_price)}</span>`;
+        // ... (Phần code bên dưới giữ nguyên)
 
+        const statusColor = {
+            'pending': 'text-yellow-600 bg-yellow-100',
+            'processing': 'text-blue-600 bg-blue-100',
+            'payment_pending': 'text-orange-600 bg-orange-100', // Màu cam nổi bật
+            'paid': 'text-green-600 bg-green-100',
+            'completed': 'text-green-800 bg-green-200',
+            'cancelled': 'text-gray-600 bg-gray-200'
+        };
+        
+        // Chi tiết đơn hàng
+        let detailHtml = order.type === 'file' 
+            ? `<p class="text-sm">File: <b>${order.file_url.split('/').pop().substring(0, 20)}...</b> (${order.page_count} trang)</p>`
+            : `<p class="text-sm">In Chữ: <b>${order.board_count} bảng</b> (Phòng ${order.room_number || '?'})</p>`;
+
+        // Nút chức năng cơ bản
+        let actionsHtml = '';
+        if(order.status === 'pending') {
+            actionsHtml += `<button onclick="cancelOrder('${order.id}')" class="text-red-500 text-sm hover:underline mr-3">Hủy đơn</button>`;
+        }
+        actionsHtml += `<button onclick="copyOrderContent('${order.id}')" class="text-blue-500 text-sm hover:underline">Sao chép</button>`;
+
+        // Xử lý giá tiền
+        let priceDisplay = formatCurrency(order.final_price || order.original_price);
+        if(order.adjustment_fee !== 0) {
+            priceDisplay += ` <span class="text-xs text-gray-400 line-through">${formatCurrency(order.original_price)}</span>`;
+        }
+
+        // --- TÍNH NĂNG MỚI: HIỆN QR CODE KHI CHỜ THANH TOÁN ---
+        let qrSection = '';
+        if (order.status === 'payment_pending') {
+            qrSection = `
+                <div class="mt-3 p-4 border-2 border-orange-300 bg-orange-50 rounded-lg text-center animate-pulse">
+                    <p class="font-bold text-orange-700 mb-2">🔔 YÊU CẦU THANH TOÁN</p>
+                    <p class="text-sm text-gray-700 mb-2">Vui lòng quét mã bên dưới để thanh toán <b>${priceDisplay}</b></p>
+                    
+                    <img src="${QR_LINK_FINAL}" class="w-48 h-48 mx-auto rounded border shadow-sm object-cover bg-white cursor-pointer" onclick="window.open(this.src)">
+                    
+                    <p class="text-xs text-gray-500 mt-2 italic">
+                        * Nếu bạn đã thanh toán, vui lòng bỏ qua thông báo này hoặc nhắn tin hỗ trợ.
+                    </p>
+                </div>
+            `;
+        }
+
+        // Ghép giao diện thẻ đơn hàng
         const card = document.createElement('div');
-        card.className = 'bg-white p-4 rounded shadow border-l-4 ' + (order.status === 'pending' ? 'border-yellow-500' : 'border-gray-300');
-        card.innerHTML = `<div class="flex justify-between items-start mb-2"><span class="px-2 py-1 rounded text-xs font-bold ${statusColor[order.status] || ''}">${order.status.toUpperCase()}</span><span class="font-bold text-red-600">${priceDisplay}</span></div>${detailHtml}<div class="mt-2 pt-2 border-t flex justify-between items-center"><span class="text-xs text-gray-400">${formatDate(order.created_at)}</span><div>${actionsHtml}</div></div>`;
+        card.className = 'bg-white p-4 rounded shadow border-l-4 ' + (order.status === 'payment_pending' ? 'border-orange-500' : (order.status === 'pending' ? 'border-yellow-500' : 'border-gray-300'));
+        
+        card.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+                <span class="px-2 py-1 rounded text-xs font-bold ${statusColor[order.status] || ''}">
+                    ${order.status === 'payment_pending' ? 'CHỜ THANH TOÁN' : order.status.toUpperCase()}
+                </span>
+                <span class="font-bold text-red-600">${priceDisplay}</span>
+            </div>
+            
+            ${detailHtml}
+            
+            ${qrSection}
+
+            <div class="mt-2 pt-2 border-t flex justify-between items-center">
+                <span class="text-xs text-gray-400">${formatDate(order.created_at)}</span>
+                <div>${actionsHtml}</div>
+            </div>
+        `;
         container.appendChild(card);
     });
 }
@@ -307,6 +360,9 @@ async function copyOrderContent(orderId) {
     alert("Đã sao chép!");
 }
 
+// ============================================================
+// 6. CHAT SUPPORT
+// ============================================================
 function toggleChat() {
     const win = document.getElementById('chat-window');
     win.classList.toggle('hidden');
@@ -319,7 +375,7 @@ function toggleChat() {
 
 async function loadMessages() {
     if(!currentUser) return;
-    const { data } = await _supabase.from('messages').select('*').or(`sender_id.eq.${currentUser.id},is_admin.eq.true`).order('created_at', { ascending: true });
+    const { data } = await _supabase.from('messages').select('*').or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`).order('created_at', { ascending: true });
     const container = document.getElementById('chat-messages');
     container.innerHTML = '';
     data.forEach(msg => appendMessage(msg));
@@ -330,7 +386,14 @@ async function sendMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if(!text) return;
-    const { error } = await _supabase.from('messages').insert({ sender_id: currentUser.id, content: text, is_admin: false });
+    
+    const { error } = await _supabase.from('messages').insert({ 
+        sender_id: currentUser.id, 
+        content: text, 
+        is_admin: false,
+        is_read: false 
+    });
+    
     if(!error) input.value = '';
 }
 
@@ -338,21 +401,36 @@ function appendMessage(msg) {
     const container = document.getElementById('chat-messages');
     const div = document.createElement('div');
     const isMe = msg.sender_id === currentUser.id;
-    const bgColor = isMe ? 'bg-blue-100 text-blue-900' : (msg.is_admin ? 'bg-gray-200 text-gray-900 border border-gray-300' : 'bg-gray-100');
+    
+    const bgColor = isMe ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-800';
     const align = isMe ? 'justify-end' : 'justify-start';
-    const label = !isMe && msg.is_admin ? '<span class="text-xs font-bold text-red-500 block mb-1">Admin</span>' : '';
+    
+    let contentHtml = msg.content;
+    if (msg.image_url) contentHtml += `<br><img src="${msg.image_url}" class="mt-2 rounded w-40 h-auto border cursor-pointer" onclick="window.open(this.src)">`;
+
     div.className = `flex ${align}`;
-    div.innerHTML = `<div class="max-w-[80%] p-2 rounded text-sm ${bgColor}">${label}${msg.content}</div>`;
+    div.innerHTML = `<div class="max-w-[80%] p-2 rounded text-sm ${bgColor}">${contentHtml}</div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
 
 function subscribeRealtime() {
     _supabase.channel('public:orders').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${currentUser.id}` }, () => { loadMyOrders(); }).subscribe();
+    
     _supabase.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-         if(payload.new.sender_id === currentUser.id || payload.new.is_admin) {
-             appendMessage(payload.new);
+         const msg = payload.new;
+         if (msg.sender_id === currentUser.id || msg.receiver_id === currentUser.id) {
+             appendMessage(msg);
              if(document.getElementById('chat-window').classList.contains('hidden')) document.getElementById('chat-badge').classList.remove('hidden');
          }
     }).subscribe();
+
+    const userChannel = _supabase.channel('online-users');
+    userChannel.on('presence', { event: 'sync' }, () => {
+        // console.log("Synced presence");
+    }).subscribe(async (status) => {
+        if (status === 'SUBSCRIBED' && currentUser) {
+            await userChannel.track({ user_id: currentUser.id, online_at: new Date().toISOString() });
+        }
+    });
 }

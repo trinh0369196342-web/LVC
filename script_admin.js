@@ -127,11 +127,65 @@ function filterOrders(status) {
     renderOrders(displayedOrders);
 }
 
-async function updateStatus(id, status) { await _supabase.from('orders').update({ status }).eq('id', id); }
-async function deleteOrder(id) { if(confirm("Xóa?")) { await _supabase.from('orders').delete().eq('id', id); allOrders = allOrders.filter(o => o.id !== id); handleSearch(); } }
-function openPriceModal(id, org, fee) { editingOrderId = id; originalPriceRef = org; document.getElementById('modal-org-price').innerText = formatCurrency(org); document.getElementById('modal-new-price').value = org + fee; document.getElementById('modal-price').classList.remove('hidden'); }
-async function confirmUpdatePrice() { const fee = parseInt(document.getElementById('modal-new-price').value) - originalPriceRef; await _supabase.from('orders').update({ adjustment_fee: fee, adjustment_reason: document.getElementById('modal-reason').value }).eq('id', editingOrderId); document.getElementById('modal-price').classList.add('hidden'); }
-async function requestPayment(id, uid, amt) { if(confirm("Gửi QR?")) { await _supabase.from('orders').update({ status: 'payment_pending' }).eq('id', id); await _supabase.from('messages').insert({ sender_id: (await _supabase.auth.getUser()).data.user.id, receiver_id: uid, content: `Thanh toán: ${formatCurrency(amt)}`, is_admin: true }); alert("Đã gửi!"); } }
+// 1. CẬP NHẬT HÀM LOAD CẤU HÌNH (Thêm load QR Link)
+async function loadSettingsAdmin() {
+    const { data } = await _supabase.from('settings').select('*').single();
+    if(data) {
+        document.getElementById('set-page-price').value = data.price_per_page;
+        document.getElementById('set-board-price').value = data.price_per_board;
+        document.getElementById('set-density').value = data.density_fee_percent;
+        // Load link QR nếu có (giả sử bạn đã thêm cột qr_code_url vào bảng settings)
+        // Nếu chưa có cột trong DB, ta dùng biến tạm hoặc hardcode link ảnh của bạn
+        if(data.qr_code_url) document.getElementById('set-qr-link').value = data.qr_code_url;
+    }
+}
+
+// 2. CẬP NHẬT HÀM LƯU CẤU HÌNH (Lưu QR Link)
+async function saveSettings() {
+    const updates = {
+        price_per_page: document.getElementById('set-page-price').value,
+        price_per_board: document.getElementById('set-board-price').value,
+        density_fee_percent: document.getElementById('set-density').value,
+        // Lưu link QR (Cần thêm cột qr_code_url vào bảng settings trong Supabase trước)
+        qr_code_url: document.getElementById('set-qr-link').value
+    };
+    
+    const { data } = await _supabase.from('settings').select('id').single();
+    await _supabase.from('settings').update(updates).eq('id', data.id);
+    alert("Đã lưu cấu hình!");
+}
+
+// 3. NÂNG CẤP HÀM YÊU CẦU THANH TOÁN (Gửi Ảnh + Tiền)
+// === TÌM ĐOẠN NÀY TRONG FILE script_admin.js VÀ THAY THẾ ===
+
+async function requestPayment(orderId, userId, amount) {
+    if(!confirm(`Xác nhận yêu cầu khách thanh toán ${formatCurrency(amount)}?`)) return;
+
+    // --- SỬA ĐỔI TẠI ĐÂY ---
+    // Thay vì lấy từ ô nhập liệu hoặc link placeholder, ta gán cứng link ảnh nội bộ
+    let qrImageLink = "IMG/IMG_0542.jpeg"; 
+    // ------------------------
+
+    await _supabase.from('orders').update({ status: 'payment_pending' }).eq('id', orderId);
+
+    const messageContent = `
+        🔔 <b>YÊU CẦU THANH TOÁN</b><br>
+        Mã đơn: <b>${orderId.slice(0,6)}</b><br>
+        Số tiền cần trả: <b class="text-red-600 text-lg">${formatCurrency(amount)}</b><br>
+        Vui lòng quét mã QR bên dưới để chuyển khoản:
+    `;
+
+    const { error } = await _supabase.from('messages').insert({
+        sender_id: (await _supabase.auth.getUser()).data.user.id,
+        receiver_id: userId,
+        content: messageContent,
+        image_url: qrImageLink, // Link ảnh bây giờ là "IMG/IMG_0542.jpeg"
+        is_admin: true
+    });
+
+    if(error) alert("Lỗi gửi tin nhắn: " + error.message);
+    else alert("Đã gửi yêu cầu thanh toán kèm QR Code!");
+}
 
 // ============================================================
 // 3. CHAT SYSTEM (ADMIN)
