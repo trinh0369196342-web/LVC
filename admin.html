@@ -108,17 +108,21 @@
         </div>
     </main>
 
-    <div id="modal-price" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded w-96 shadow-lg">
-            <h3 class="font-bold text-lg mb-4">Chỉnh sửa giá đơn hàng</h3>
-            <p class="text-sm text-gray-500 mb-2">Giá gốc: <span id="modal-org-price" class="font-bold"></span></p>
-            <label class="block text-sm font-medium">Giá chốt thực tế</label>
-            <input type="number" id="modal-new-price" class="w-full border p-2 rounded mb-3 font-bold text-red-600">
-            <label class="block text-sm font-medium">Lý do</label>
-            <input type="text" id="modal-reason" class="w-full border p-2 rounded mb-4">
-            <div class="flex justify-end gap-2">
-                <button onclick="document.getElementById('modal-price').classList.add('hidden')" class="bg-gray-200 px-4 py-2 rounded">Hủy</button>
-                <button onclick="confirmUpdatePrice()" class="bg-blue-600 text-white px-4 py-2 rounded">Cập nhật</button>
+    <div id="modal-copy-preview" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg w-3/4 max-w-4xl h-3/4 flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-xl text-blue-800">📋 Chi tiết Nội dung In</h3>
+                <button onclick="document.getElementById('modal-copy-preview').classList.add('hidden')" class="text-3xl text-gray-400 hover:text-red-500">&times;</button>
+            </div>
+            
+            <div id="copy-table-container" class="flex-1 overflow-y-auto border rounded bg-gray-50 p-2">
+                </div>
+
+            <div class="mt-4 flex justify-end gap-3 pt-2 border-t">
+                <button onclick="document.getElementById('modal-copy-preview').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Đóng</button>
+                <button onclick="copyAllContent()" class="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 flex items-center gap-2">
+                    📄 Sao chép toàn bộ vào Word
+                </button>
             </div>
         </div>
     </div>

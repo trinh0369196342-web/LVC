@@ -68,6 +68,7 @@ async function loadOrders() {
     if (data) { allOrders = data; displayedOrders = data; renderOrders(data); }
 }
 
+// --- Thay thế hàm renderOrders cũ bằng hàm này ---
 function renderOrders(orders) {
     const tbody = document.getElementById('orders-table-body');
     tbody.innerHTML = '';
@@ -75,35 +76,27 @@ function renderOrders(orders) {
     if(orders.length === 0) document.getElementById('no-result').classList.remove('hidden');
     else document.getElementById('no-result').classList.add('hidden');
 
-    const statusDict = { 
-        'pending': 'bg-yellow-100 text-yellow-800', 
-        'processing': 'bg-blue-100 text-blue-800', 
-        'payment_pending': 'bg-orange-100 text-orange-800', 
-        'paid': 'bg-green-50 text-green-600', 
-        'completed': 'bg-green-100 text-green-800', 
-        'cancelled': 'bg-gray-200 text-gray-500' 
-    };
+    const statusDict = { 'pending': 'bg-yellow-100 text-yellow-800', 'processing': 'bg-blue-100 text-blue-800', 'payment_pending': 'bg-orange-100 text-orange-800', 'paid': 'bg-green-50 text-green-600', 'completed': 'bg-green-100 text-green-800', 'cancelled': 'bg-gray-200 text-gray-500' };
 
     orders.forEach(o => {
         const tr = document.createElement('tr'); tr.className = "border-b hover:bg-gray-50 group";
         
-        // --- LOGIC NÚT TẢI FILE (FIXED) ---
+        // Cột chi tiết
         let details = '';
         if(o.type === 'file') {
-            // Kiểm tra link
             const isLink = o.file_url && o.file_url.startsWith('http');
-            // Nếu là link thật -> target _blank, nếu demo -> alert
-            const linkAttr = isLink ? `href="${o.file_url}" target="_blank"` : `href="#" onclick="alert('Đây là file demo, không tải được!')"`;
-            
+            const linkAttr = isLink ? `href="${o.file_url}" target="_blank"` : `href="#" onclick="alert('File demo!')"`;
+            details = `<div class="text-sm"><span class="font-bold text-blue-600">[IN FILE]</span> <a ${linkAttr} class="text-blue-600 hover:underline font-bold">⬇ Tải xuống</a><br>• ${o.page_count} trang, ${o.is_landscape ? 'Ngang' : 'Dọc'}</div>`;
+        } else {
+            // NÚT MỚI: openCopyPreview
             details = `
                 <div class="text-sm">
-                    <span class="font-bold text-blue-600">[IN FILE]</span> 
-                    <a ${linkAttr} class="text-blue-600 hover:underline ml-1 font-bold">⬇ TẢI XUỐNG</a><br>
-                    • ${o.page_count} trang, Cỡ ${o.font_size}<br>
-                    • ${o.is_landscape ? 'Ngang' : 'Dọc'}
+                    <span class="font-bold text-green-600">[IN CHỮ]</span> (${o.board_count} bảng)<br>
+                    • P.${o.room_number || '?'} - T.${o.floor_number || '?'}<br>
+                    <button onclick="openCopyPreview('${o.id}')" class="mt-1 bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded text-xs hover:bg-green-100 flex items-center gap-1">
+                        👁️ Xem & Copy (${o.board_count} bảng)
+                    </button>
                 </div>`;
-        } else {
-            details = `<div class="text-sm"><span class="font-bold text-green-600">[IN CHỮ]</span> (${o.board_count} bảng)<br>• P.${o.room_number || '?'}</div>`;
         }
 
         let actions = `<div class="flex flex-col gap-1">`;
@@ -120,6 +113,7 @@ function renderOrders(orders) {
         tbody.appendChild(tr);
     });
 }
+
 
 function handleSearch() {
     const term = document.getElementById('search-input').value.toLowerCase();
@@ -319,4 +313,86 @@ function setupRealtime() {
             loadChatUsers();
         })
         .subscribe();
+}
+// ============================================================
+// TÍNH NĂNG MỚI: XEM & SAO CHÉP BẢNG IN (PREVIEW MODAL)
+// ============================================================
+let currentPreviewData = []; // Lưu tạm dữ liệu để copy
+
+function openCopyPreview(orderId) {
+    const order = allOrders.find(o => o.id === orderId);
+    if (!order || !order.boards_data) return alert("Không tìm thấy dữ liệu bảng!");
+
+    currentPreviewData = order.boards_data; // Lưu lại để dùng cho nút Copy All
+
+    const container = document.getElementById('copy-table-container');
+    
+    // Tạo bảng HTML
+    let html = `
+        <table class="w-full border-collapse bg-white text-sm">
+            <thead>
+                <tr class="bg-gray-200 text-gray-700">
+                    <th class="border p-3 w-16 text-center">Bảng #</th>
+                    <th class="border p-3 w-1/4">Môn / Tiêu đề</th>
+                    <th class="border p-3">Nội dung chi tiết</th>
+                    <th class="border p-3 w-24 text-center">Tác vụ</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    order.boards_data.forEach(b => {
+        html += `
+            <tr class="hover:bg-blue-50">
+                <td class="border p-3 text-center font-bold text-blue-600 text-lg">${b.id}</td>
+                <td class="border p-3 font-semibold text-gray-800">${b.subject || '(Trống)'}</td>
+                <td class="border p-3">
+                    <pre class="whitespace-pre-wrap font-sans text-gray-600">${b.content || '(Trống)'}</pre>
+                </td>
+                <td class="border p-3 text-center">
+                    <button onclick="copySingleBoard('${b.id}')" class="text-blue-500 border border-blue-500 px-2 py-1 rounded hover:bg-blue-600 hover:text-white text-xs">
+                        Copy dòng này
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    
+    if(order.boards_data.length === 0) {
+        html = '<p class="text-center p-10 text-gray-400">Khách hàng chưa nhập nội dung nào.</p>';
+    }
+
+    container.innerHTML = html;
+    document.getElementById('modal-copy-preview').classList.remove('hidden');
+}
+
+// Hàm copy toàn bộ (Dùng để paste vào Word in hàng loạt)
+function copyAllContent() {
+    if(!currentPreviewData || currentPreviewData.length === 0) return;
+
+    let text = "";
+    currentPreviewData.forEach(b => {
+        text += `=== BẢNG ${b.id}: ${b.subject.toUpperCase()} ===\n`;
+        text += `${b.content}\n`;
+        text += `----------------------------------------\n\n`;
+    });
+
+    navigator.clipboard.writeText(text).then(() => {
+        alert(`Đã sao chép nội dung của ${currentPreviewData.length} bảng vào bộ nhớ!`);
+        // document.getElementById('modal-copy-preview').classList.add('hidden'); // Có thể đóng hoặc không
+    });
+}
+
+// Hàm copy từng dòng (Nếu muốn lấy lẻ)
+function copySingleBoard(boardId) {
+    // boardId đang là string hoặc number, convert về number để so sánh
+    const board = currentPreviewData.find(b => b.id == boardId);
+    if(board) {
+        const text = `${board.subject}\n${board.content}`;
+        navigator.clipboard.writeText(text).then(() => {
+            alert(`Đã copy nội dung Bảng ${boardId}`);
+        });
+    }
 }
