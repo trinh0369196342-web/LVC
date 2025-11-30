@@ -1,0 +1,69 @@
+/* === CARD UI GIỐNG TRÊN ẢNH TIKTOK === */
+
+.launcher-card {
+    width: 90%;
+    max-width: 420px;
+    padding: 30px;
+    border-radius: 28px;
+    
+    /* nền gradient mượt */
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+    
+    /* hiệu ứng kính (glassmorphism) */
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    
+    /* bóng đổ 3D */
+    box-shadow: 0 25px 45px rgba(0, 0, 0, 0.35);
+    
+    position: relative;
+    overflow: hidden;
+    
+    transition: 0.45s ease;
+}
+
+/* Hiệu ứng overlay sáng góc */
+.launcher-card::before {
+    content: "";
+    position: absolute;
+    top: -20%;
+    right: -20%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(rgba(255, 255, 255, 0.15), transparent 70%);
+    filter: blur(25px);
+}
+
+/* Hover: nhấc card lên */
+.launcher-card:hover {
+    transform: translateY(-12px) scale(1.03);
+    box-shadow: 0 35px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* Ảnh icon 3D */
+.launcher-icon {
+    width: 110px;
+    height: 110px;
+    object-fit: contain;
+    display: block;
+    margin-bottom: 20px;
+    
+    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
+}
+
+/* Tiêu đề */
+.launcher-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+/* Mô tả */
+.launcher-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.85);
+}

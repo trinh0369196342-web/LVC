@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Trị - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 font-sans h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-gray-900 text-white flex flex-col">
+        <div class="p-4 text-center font-bold text-xl border-b border-gray-700">ADMIN PANEL</div>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchView('orders')" id="nav-orders" class="w-full text-left p-3 rounded hover:bg-gray-800 bg-gray-800">📦 Quản lý Đơn hàng</button>
+            <button onclick="switchView('chat')" id="nav-chat" class="w-full text-left p-3 rounded hover:bg-gray-800">💬 Hỗ trợ Khách hàng</button>
+            <button onclick="switchView('users')" id="nav-users" class="w-full text-left p-3 rounded hover:bg-gray-800">👥 Quản lý Tài khoản</button>
+            <button onclick="switchView('settings')" id="nav-settings" class="w-full text-left p-3 rounded hover:bg-gray-800">⚙️ Cấu hình Giá</button>
+        </nav>
+        <div class="p-4 border-t border-gray-700">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 rounded-full bg-green-500"></div>
+                <div>
+                    <p class="text-sm font-bold" id="admin-name">Admin</p>
+                    <p class="text-xs text-green-400">Online</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="w-full bg-red-600 py-2 rounded hover:bg-red-700 text-sm">Đăng xuất</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white shadow p-4 z-10 flex justify-between items-center">
+            <h2 id="page-title" class="text-xl font-bold text-gray-800">Quản lý Đơn hàng</h2>
+        </header>
+
+        <div class="flex-1 overflow-auto p-6 relative">
+            
+            <div id="view-orders" class="fade-in">
+                <div class="flex flex-col md:flex-row gap-4 mb-4 justify-between">
+                    <div class="relative w-full md:w-1/3">
+                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="🔍 Tìm tên, email hoặc mã đơn..." class="w-full pl-10 pr-4 py-2 border rounded shadow-sm outline-none">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</div>
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto pb-2">
+                        <button onclick="filterOrders('all')" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm">Tất cả</button>
+                        <button onclick="filterOrders('pending')" class="px-3 py-2 rounded bg-yellow-100 text-yellow-800 text-sm border border-yellow-200">Mới</button>
+                        <button onclick="filterOrders('processing')" class="px-3 py-2 rounded bg-blue-100 text-blue-800 text-sm border border-blue-200">Đang xử lý</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded shadow overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-gray-600 text-sm uppercase">
+                            <tr><th class="p-4 border-b">Mã / Thời gian</th><th class="p-4 border-b">Khách hàng</th><th class="p-4 border-b">Chi tiết</th><th class="p-4 border-b">Tổng tiền</th><th class="p-4 border-b">Trạng thái</th><th class="p-4 border-b">Hành động</th></tr>
+                        </thead>
+                        <tbody id="orders-table-body" class="text-sm text-gray-700"></tbody>
+                    </table>
+                    <div id="no-result" class="hidden p-8 text-center text-gray-500">Không tìm thấy đơn hàng nào.</div>
+                </div>
+            </div>
+
+            <div id="view-chat" class="hidden fade-in h-full flex gap-4">
+                <div class="w-1/3 bg-white rounded shadow overflow-hidden flex flex-col">
+                    <div class="p-3 border-b bg-gray-50 font-bold">Danh sách hội thoại</div>
+                    <div id="chat-user-list" class="flex-1 overflow-y-auto">
+                        <p class="p-4 text-gray-400 text-sm text-center">Đang tải...</p>
+                    </div>
+                </div>
+                <div class="w-2/3 bg-white rounded shadow flex flex-col">
+                    <div class="p-3 border-b bg-gray-50 flex justify-between items-center">
+                        <span class="font-bold" id="chat-current-user">Chọn một người để chat</span>
+                    </div>
+                    <div id="admin-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-100">
+                        </div>
+                    <div class="p-3 border-t flex gap-2">
+                        <input type="text" id="admin-chat-input" disabled placeholder="Nhập tin nhắn..." class="flex-1 border p-2 rounded outline-none" onkeypress="if(event.key==='Enter') sendAdminReply()">
+                        <button onclick="sendAdminReply()" id="admin-chat-btn" disabled class="bg-blue-600 text-white px-4 rounded hover:bg-blue-700">Gửi</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-users" class="hidden fade-in">
+                <div class="bg-white rounded shadow overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-600 text-sm uppercase"><tr><th class="p-4">Avatar</th><th class="p-4">Email / Tên</th><th class="p-4">Vai trò</th><th class="p-4">Ngày tham gia</th><th class="p-4">Hành động</th></tr></thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-settings" class="hidden fade-in max-w-lg">
+                <div class="bg-white p-6 rounded shadow">
+                    <h3 class="font-bold text-lg mb-4 text-blue-800">Bảng giá Gốc</h3>
+                    <label class="block mb-2 text-sm">Giá in giấy</label><input type="number" id="set-page-price" class="w-full border p-2 rounded mb-4">
+                    <label class="block mb-2 text-sm">Giá in bảng</label><input type="number" id="set-board-price" class="w-full border p-2 rounded mb-4">
+                    
+                    <label class="block mb-2 text-sm">Link Ảnh QR Code</label>
+                    <input type="text" id="set-qr-link" class="w-full border p-2 rounded mb-4" placeholder="https://...">
+
+                    <button onclick="saveSettings()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Lưu Cấu Hình</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-price" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded w-96 shadow-lg">
+            <h3 class="font-bold text-lg mb-4">Chỉnh sửa giá đơn hàng</h3>
+            <p class="text-sm text-gray-500 mb-2">Giá gốc: <span id="modal-org-price" class="font-bold"></span></p>
+            <label class="block text-sm font-medium">Giá chốt thực tế</label>
+            <input type="number" id="modal-new-price" class="w-full border p-2 rounded mb-3 font-bold text-red-600">
+            <label class="block text-sm font-medium">Lý do</label>
+            <input type="text" id="modal-reason" class="w-full border p-2 rounded mb-4">
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('modal-price').classList.add('hidden')" class="bg-gray-200 px-4 py-2 rounded">Hủy</button>
+                <button onclick="confirmUpdatePrice()" class="bg-blue-600 text-white px-4 py-2 rounded">Cập nhật</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-copy-preview" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg w-3/4 max-w-4xl h-3/4 flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="font-bold text-xl text-blue-800">📋 Chi tiết Nội dung In</h3>
+                <button onclick="document.getElementById('modal-copy-preview').classList.add('hidden')" class="text-3xl text-gray-400 hover:text-red-500">&times;</button>
+            </div>
+            
+            <div id="copy-table-container" class="flex-1 overflow-y-auto border rounded bg-gray-50 p-2">
+                </div>
+
+            <div class="mt-4 flex justify-end gap-3 pt-2 border-t">
+                <button onclick="document.getElementById('modal-copy-preview').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Đóng</button>
+                <button onclick="copyAllContent()" class="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 flex items-center gap-2">
+                    📄 Sao chép toàn bộ
+                </button>
+            </div>
+        </div>
+    </div>
+  
+    <script src="script_admin.js"></script>
+</body>
+</html>
