@@ -2,69 +2,48 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Quản Trị</title>
+    <title>Admin System</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-    <div class="nav">
-        <b>ADMIN</b> | 
-        <button onclick="show('info')">1. Tài Khoản</button>
-        <button onclick="show('chat')">2. Hỗ Trợ Tổng</button>
-        <button onclick="show('all-orders')">3. Tất Cả Đơn Hàng</button>
-        <button onclick="show('chart')">4. Biểu Đồ Tổng</button>
-        <button onclick="logout()" style="float:right;">Đăng xuất</button>
+<body id="page-admin">
+
+    <div id="auth-view" class="auth-container">
+        <h2>Đăng Nhập Quản Trị</h2>
+        <input type="email" id="auth-email" class="auth-input" placeholder="Email">
+        <input type="password" id="auth-pass" class="auth-input" placeholder="Mật khẩu">
+        <p id="auth-msg" style="color:red"></p>
+        <button id="btn-login" class="btn-primary">ĐĂNG NHẬP</button>
     </div>
 
-    <div id="info" class="section">
-        <h3>Admin Profile</h3>
-        <p>Xin chào quản trị viên.</p>
-    </div>
+    <div id="dashboard-view" class="dashboard-container hidden">
+        <div class="nav-bar" style="background: #23272b;">
+            <span class="nav-title">ADMINISTRATOR</span>
+            <button class="nav-btn" onclick="app.switchTab('info')">Info</button>
+            <button class="nav-btn" onclick="app.switchTab('all')">Quản Lý Đơn</button>
+            <button class="nav-btn" onclick="app.switchTab('stats')">Thống Kê</button>
+            <button class="nav-btn btn-logout" onclick="app.logout()">Thoát</button>
+        </div>
 
-    <div id="chat" class="section hidden">
-        <h3>Hộp thư hỗ trợ trung tâm</h3>
-        <p>Nhận tin từ tất cả Khách và Người bán.</p>
-    </div>
+        <div id="tab-info" class="content-section">
+            <h3>Thông tin Admin</h3>
+            <p>Email: <span id="user-display">...</span></p>
+        </div>
 
-    <div id="all-orders" class="section hidden">
-        <h3>Quản Lý Đơn Hàng</h3>
-        <p>Danh sách tất cả đơn hàng trên hệ thống (Admin có thể can thiệp tất cả).</p>
-        <div style="border:1px solid #000; padding:10px;">
-            Đơn #101 - Trạng thái: Chờ - <button>Can thiệp xử lý</button>
+        <div id="tab-all" class="content-section hidden">
+            <h3>Tất Cả Đơn Hàng Hệ Thống</h3>
+            <div id="a-all-list">Loading...</div>
+        </div>
+
+        <div id="tab-stats" class="content-section hidden">
+            <h3>Thống Kê Toàn Sàn</h3>
+            <div class="card">
+                <h2>Doanh Thu: <span id="a-rev" style="color:green">0</span> VNĐ</h2>
+                <h3>Tổng Đơn: <span id="a-count">0</span></h3>
+            </div>
         </div>
     </div>
 
-    <div id="chart" class="section hidden">
-        <h3>Thống kê toàn sàn</h3>
-        <p>Tổng doanh thu: 100.000.000đ</p>
-    </div>
-
-    <script>
-        function show(id) {
-            document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        const SUPABASE_URL = 'DÁN_URL_CỦA_BẠN_VÀO_ĐÂY';
-        const SUPABASE_KEY = 'DÁN_KEY_CỦA_BẠN_VÀO_ĐÂY';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function logout() {
-            await supabase.auth.signOut();
-            window.location.href = 'login.html';
-        }
-
-        async function checkAuth() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) window.location.href = 'login.html';
-
-            const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
-            if (profile.role !== 'admin') {
-                alert('CẤM TRUY CẬP! Bạn không phải Admin');
-                window.location.href = 'login.html';
-            }
-        }
-        checkAuth();
-    </script>
+    <script src="main.js"></script>
 </body>
 </html>

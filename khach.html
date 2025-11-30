@@ -6,87 +6,61 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-    <div class="nav">
-        <b>KHÁCH HÀNG</b> | 
-        <button onclick="show('info')">1. Tài Khoản</button>
-        <button onclick="show('chat')">2. Hỗ Trợ</button>
-        <button onclick="show('orders')">3. Đơn Của Tôi</button>
-        <button onclick="show('print')">4. In Hàng</button>
-        <button onclick="logout()" style="float:right; background:red; color:white; border:none;">Đăng xuất</button>
+<body id="page-customer"> <div id="auth-view" class="auth-container">
+        <h2>Đăng Nhập Khách Hàng</h2>
+        <input type="email" id="auth-email" class="auth-input" placeholder="Email">
+        <input type="password" id="auth-pass" class="auth-input" placeholder="Mật khẩu">
+        <p id="auth-msg" style="color:red; font-size:13px;"></p>
+        <button id="btn-login" class="btn-primary">ĐĂNG NHẬP</button>
+        <button id="btn-register" class="btn-secondary">ĐĂNG KÝ MỚI</button>
     </div>
 
-    <div id="info" class="section">
-        <h3>Thông tin tài khoản</h3>
-        <p>Email: <span id="user-email">...</span></p>
-    </div>
+    <div id="dashboard-view" class="dashboard-container hidden">
+        <div class="nav-bar">
+            <span class="nav-title">KHÁCH HÀNG</span>
+            <button class="nav-btn" onclick="app.switchTab('info')">Tài khoản</button>
+            <button class="nav-btn" onclick="app.switchTab('print')">In Ấn</button>
+            <button class="nav-btn" onclick="app.switchTab('orders')">Đơn Hàng</button>
+            <button class="nav-btn" onclick="app.switchTab('chat')">Hỗ Trợ</button>
+            <button class="nav-btn btn-logout" onclick="app.logout()">Thoát</button>
+        </div>
 
-    <div id="chat" class="section hidden">
-        <h3>Hỗ Trợ</h3>
-        <select><option>Người bán</option><option>Admin</option></select>
-        <input type="text" placeholder="Nhập tin nhắn..." style="width: 300px;"> <button>Gửi</button>
-        <div style="margin-top:10px; border:1px solid #ddd; height:150px;">Nội dung chat...</div>
-    </div>
+        <div id="tab-info" class="content-section">
+            <h3>Thông tin cá nhân</h3>
+            <p>Email: <span id="user-display">...</span></p>
+        </div>
 
-    <div id="orders" class="section hidden">
-        <h3>Đơn hàng của tôi</h3>
-        <div id="list-orders">Đang tải...</div>
-    </div>
-
-    <div id="print" class="section hidden">
-        <h3>Tạo Yêu Cầu In</h3>
-        Số lượng bảng: 
-        <select id="qty" onchange="renderForms()">
-            <option value="0">Chọn số lượng</option>
-            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-            <option value="4">4</option><option value="5">5</option>
+        <div id="tab-print" class="content-section hidden">
+            <h3>Tạo Đơn In Mới</h3>
+            <label>Số lượng bảng (1-10):</label>
+            <select id="c-qty" class="auth-input" onchange="app.renderForms()">
+                <option value="0">-- Chọn --</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                <option value="4">4</option><option value="5">5</option>
             </select>
-        
-        <div id="forms-area"></div> <br>
-        <label><input type="checkbox"> Giao hàng (Ship)</label>
-        <br><br>
-        <button style="background: green; color: white;">TẠO ĐƠN</button>
+            <div id="c-forms-area"></div>
+            <div style="margin-top:15px">
+                <label><input type="checkbox" id="c-ship"> Giao hàng tận nơi (Tính ship)</label>
+            </div>
+            <button onclick="app.createOrder()" class="btn-primary">TẠO ĐƠN HÀNG</button>
+        </div>
+
+        <div id="tab-orders" class="content-section hidden">
+            <h3>Lịch sử đơn hàng</h3>
+            <div id="c-order-list">Đang tải...</div>
+        </div>
+
+        <div id="tab-chat" class="content-section hidden">
+            <h3>Hỗ Trợ Trực Tuyến</h3>
+            <select id="chat-receiver" class="auth-input">
+                <option value="seller">Nhắn người bán</option>
+                <option value="admin">Nhắn Admin</option>
+            </select>
+            <input type="text" id="chat-msg" class="auth-input" placeholder="Nhập nội dung...">
+            <button onclick="alert('Đã gửi tin nhắn hỗ trợ!')" class="btn-primary">Gửi tin</button>
+        </div>
     </div>
 
-    <script>
-        // JS XỬ LÝ GIAO DIỆN
-        function show(id) {
-            document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        function renderForms() {
-            const n = document.getElementById('qty').value;
-            const area = document.getElementById('forms-area');
-            area.innerHTML = '';
-            for(let i=1; i<=n; i++) {
-                area.innerHTML += `
-                    <div class="form-box">
-                        <b>Bảng số ${i}</b><br>
-                        Môn: <input type="text" placeholder="Văn, Sử..."><br>
-                        Nội dung (Tự luận): <textarea style="width:100%"></textarea><br>
-                        <small style="color:red">Cấm in trắc nghiệm</small>
-                    </div>`;
-            }
-        }
-        
-        // LOGIC ĐĂNG XUẤT
-        const SUPABASE_URL = 'DÁN_URL_CỦA_BẠN_VÀO_ĐÂY';
-        const SUPABASE_KEY = 'DÁN_KEY_CỦA_BẠN_VÀO_ĐÂY';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function logout() {
-            await supabase.auth.signOut();
-            window.location.href = 'login.html';
-        }
-
-        // Kiểm tra đăng nhập khi vào trang
-        async function checkAuth() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) window.location.href = 'login.html';
-            else document.getElementById('user-email').innerText = session.user.email;
-        }
-        checkAuth();
-    </script>
+    <script src="main.js"></script>
 </body>
 </html>
