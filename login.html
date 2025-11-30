@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng Nhập Hệ Thống</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="box">
+        <h2 style="text-align:center">CỔNG ĐĂNG NHẬP</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Mật khẩu (tối thiểu 6 ký tự)">
+        <div id="message" class="msg"></div>
+        <button onclick="handleLogin()">ĐĂNG NHẬP</button>
+        <button onclick="handleRegister()" style="background: #fff; color: #333; border: 1px solid #333;">ĐĂNG KÝ MỚI</button>
+    </div>
+
+    <script>
+        // CẤU HÌNH SUPABASE (Thay URL và KEY của bạn vào đây)
+        const SUPABASE_URL = 'DÁN_URL_CỦA_BẠN_VÀO_ĐÂY';
+        const SUPABASE_KEY = 'DÁN_KEY_CỦA_BẠN_VÀO_ĐÂY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // 1. Đăng nhập Auth
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) return document.getElementById('message').innerText = error.message;
+
+            // 2. Kiểm tra Role (Quyền) trong bảng profiles
+            const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+            
+            // 3. Chuyển hướng
+            if (profile.role === 'admin') window.location.href = 'admin.html';
+            else if (profile.role === 'seller') window.location.href = 'nguoi_ban.html';
+            else window.location.href = 'khach.html';
+        }
+
+        async function handleRegister() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            // Đăng ký xong tự động vào Trigger SQL tạo profile với role='customer'
+            const { error } = await supabase.auth.signUp({ email, password });
+            if (error) document.getElementById('message').innerText = error.message;
+            else alert("Đăng ký thành công! Hãy đăng nhập.");
+        }
+    </script>
+</body>
+</html>

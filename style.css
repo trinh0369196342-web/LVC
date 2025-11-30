@@ -1,69 +1,38 @@
-/* === CARD UI GIỐNG TRÊN ẢNH TIKTOK === */
+/* CẤU HÌNH CHUNG */
+body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+.hidden { display: none !important; }
+.box { background: white; padding: 30px; border: 1px solid #ccc; width: 300px; margin: 50px auto; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.full-width { width: 100%; box-sizing: border-box; }
+.mt-10 { margin-top: 10px; }
+.mt-20 { margin-top: 20px; }
+.text-center { text-align: center; }
+.text-red { color: red; }
+.text-green { color: green; }
+.text-blue { color: blue; }
 
-.launcher-card {
-    width: 90%;
-    max-width: 420px;
-    padding: 30px;
-    border-radius: 28px;
-    
-    /* nền gradient mượt */
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-    
-    /* hiệu ứng kính (glassmorphism) */
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    
-    /* bóng đổ 3D */
-    box-shadow: 0 25px 45px rgba(0, 0, 0, 0.35);
-    
-    position: relative;
-    overflow: hidden;
-    
-    transition: 0.45s ease;
-}
+/* BUTTON & INPUT */
+input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; background-color: #333; transition: 0.3s; }
+button:hover { opacity: 0.9; }
+.btn-red { background-color: #d9534f; }
+.btn-green { background-color: #5cb85c; }
+.btn-blue { background-color: #0275d8; }
+.btn-outline { background: transparent; border: 1px solid #333; color: #333; }
 
-/* Hiệu ứng overlay sáng góc */
-.launcher-card::before {
-    content: "";
-    position: absolute;
-    top: -20%;
-    right: -20%;
-    width: 60%;
-    height: 60%;
-    background: radial-gradient(rgba(255, 255, 255, 0.15), transparent 70%);
-    filter: blur(25px);
-}
+/* NAVIGATION (MENU) */
+.nav { background: white; padding: 15px; border-bottom: 2px solid #ddd; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nav b { margin-right: auto; font-size: 1.2em; }
+.nav-btn { background: #eee; color: #333; border: 1px solid #ccc; }
+.nav-btn:hover { background: #ddd; }
 
-/* Hover: nhấc card lên */
-.launcher-card:hover {
-    transform: translateY(-12px) scale(1.03);
-    box-shadow: 0 35px 60px rgba(0, 0, 0, 0.45);
-}
+/* SECTION & FORM ITEMS */
+.section { background: white; padding: 20px; margin-top: 20px; border-radius: 5px; border: 1px solid #ddd; }
+.form-box { border: 1px dashed #999; padding: 15px; margin-bottom: 15px; background: #fafafa; border-radius: 4px; }
+.order-card { padding: 15px; margin-bottom: 10px; border: 1px solid #eee; border-left-width: 5px; background: #fff; }
+.order-pending { border-left-color: orange; }
+.order-processing { border-left-color: blue; }
+.order-completed { border-left-color: green; }
+.order-cancelled { border-left-color: red; }
 
-/* Ảnh icon 3D */
-.launcher-icon {
-    width: 110px;
-    height: 110px;
-    object-fit: contain;
-    display: block;
-    margin-bottom: 20px;
-    
-    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
-}
-
-/* Tiêu đề */
-.launcher-title {
-    font-size: 30px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 10px;
-}
-
-/* Mô tả */
-.launcher-desc {
-    font-size: 14px;
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.85);
-}
+/* CHAT BOX */
+.chat-container { height: 200px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; background: #fff; }

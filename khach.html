@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Khách Hàng</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="nav">
+        <b>KHÁCH HÀNG</b> | 
+        <button onclick="show('info')">1. Tài Khoản</button>
+        <button onclick="show('chat')">2. Hỗ Trợ</button>
+        <button onclick="show('orders')">3. Đơn Của Tôi</button>
+        <button onclick="show('print')">4. In Hàng</button>
+        <button onclick="logout()" style="float:right; background:red; color:white; border:none;">Đăng xuất</button>
+    </div>
+
+    <div id="info" class="section">
+        <h3>Thông tin tài khoản</h3>
+        <p>Email: <span id="user-email">...</span></p>
+    </div>
+
+    <div id="chat" class="section hidden">
+        <h3>Hỗ Trợ</h3>
+        <select><option>Người bán</option><option>Admin</option></select>
+        <input type="text" placeholder="Nhập tin nhắn..." style="width: 300px;"> <button>Gửi</button>
+        <div style="margin-top:10px; border:1px solid #ddd; height:150px;">Nội dung chat...</div>
+    </div>
+
+    <div id="orders" class="section hidden">
+        <h3>Đơn hàng của tôi</h3>
+        <div id="list-orders">Đang tải...</div>
+    </div>
+
+    <div id="print" class="section hidden">
+        <h3>Tạo Yêu Cầu In</h3>
+        Số lượng bảng: 
+        <select id="qty" onchange="renderForms()">
+            <option value="0">Chọn số lượng</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option>
+            </select>
+        
+        <div id="forms-area"></div> <br>
+        <label><input type="checkbox"> Giao hàng (Ship)</label>
+        <br><br>
+        <button style="background: green; color: white;">TẠO ĐƠN</button>
+    </div>
+
+    <script>
+        // JS XỬ LÝ GIAO DIỆN
+        function show(id) {
+            document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function renderForms() {
+            const n = document.getElementById('qty').value;
+            const area = document.getElementById('forms-area');
+            area.innerHTML = '';
+            for(let i=1; i<=n; i++) {
+                area.innerHTML += `
+                    <div class="form-box">
+                        <b>Bảng số ${i}</b><br>
+                        Môn: <input type="text" placeholder="Văn, Sử..."><br>
+                        Nội dung (Tự luận): <textarea style="width:100%"></textarea><br>
+                        <small style="color:red">Cấm in trắc nghiệm</small>
+                    </div>`;
+            }
+        }
+        
+        // LOGIC ĐĂNG XUẤT
+        const SUPABASE_URL = 'DÁN_URL_CỦA_BẠN_VÀO_ĐÂY';
+        const SUPABASE_KEY = 'DÁN_KEY_CỦA_BẠN_VÀO_ĐÂY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        // Kiểm tra đăng nhập khi vào trang
+        async function checkAuth() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) window.location.href = 'login.html';
+            else document.getElementById('user-email').innerText = session.user.email;
+        }
+        checkAuth();
+    </script>
+</body>
+</html>
