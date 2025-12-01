@@ -1,160 +1,4 @@
-  
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2ecc71;
-            --danger-color: #e74c3c;
-            --warning-color: #f39c12;
-            --dark-color: #2c3e50;
-            --light-color: #ecf0f1;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
-        }
-        
-        .navbar-brand {
-            font-weight: bold;
-        }
-        
-        .sidebar {
-            background-color: var(--dark-color);
-            color: white;
-            min-height: calc(100vh - 56px);
-            padding: 0;
-        }
-        
-        .sidebar .nav-link {
-            color: var(--light-color);
-            padding: 12px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        .main-content {
-            padding: 20px;
-        }
-        
-        .card {
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: none;
-            margin-bottom: 20px;
-        }
-        
-        .card-header {
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: bold;
-        }
-        
-        .table th {
-            background-color: var(--light-color);
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-success {
-            background-color: var(--secondary-color);
-            border-color: var(--secondary-color);
-        }
-        
-        .btn-danger {
-            background-color: var(--danger-color);
-            border-color: var(--danger-color);
-        }
-        
-        .btn-warning {
-            background-color: var(--warning-color);
-            border-color: var(--warning-color);
-        }
-        
-        .chat-container {
-            height: 400px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #f9f9f9;
-        }
-        
-        .message {
-            padding: 8px 12px;
-            margin-bottom: 10px;
-            border-radius: 18px;
-            max-width: 80%;
-        }
-        
-        .message.sent {
-            background-color: var(--primary-color);
-            color: white;
-            margin-left: auto;
-        }
-        
-        .message.received {
-            background-color: #e5e5ea;
-            color: black;
-        }
-        
-        .form-section {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-        
-        .price-display {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--secondary-color);
-            text-align: center;
-            padding: 10px;
-            background-color: #f0f8f0;
-            border-radius: 5px;
-        }
-        
-        .order-status {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-processing {
-            background-color: #cce5ff;
-            color: #004085;
-        }
-        
-        .status-completed {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        
-        .status-cancelled {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 20px;
-        }
-        /* Reset và Base Styles */
+/* Reset và Base Styles */
 * {
     margin: 0;
     padding: 0;
@@ -180,6 +24,13 @@ body {
     color: var(--dark);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
 }
 
 /* Auth Page Styles */
@@ -264,6 +115,11 @@ textarea.form-control {
     resize: vertical;
 }
 
+select.form-control {
+    cursor: pointer;
+}
+
+/* Button Styles */
 .btn {
     padding: 12px 24px;
     border: none;
@@ -276,6 +132,7 @@ textarea.form-control {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    text-decoration: none;
 }
 
 .btn-primary {
@@ -303,11 +160,27 @@ textarea.form-control {
     color: white;
 }
 
+.btn-warning {
+    background: var(--warning);
+    color: white;
+}
+
+.btn-info {
+    background: var(--info);
+    color: white;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
 .btn-lg {
     padding: 16px 32px;
     font-size: 1.1rem;
 }
 
+/* Role Selection */
 .role-selection {
     margin-top: 30px;
     padding: 20px;
@@ -346,6 +219,7 @@ textarea.form-control {
     margin-bottom: 10px;
 }
 
+/* Messages */
 .auth-message {
     padding: 15px;
     margin: 20px;
@@ -365,10 +239,11 @@ textarea.form-control {
     border: 1px solid #f5c6cb;
 }
 
-/* Main App Layout */
-.container {
+/* Dashboard Layout */
+.dashboard {
     display: flex;
     min-height: 100vh;
+    background: var(--light-gray);
 }
 
 .sidebar {
@@ -388,6 +263,9 @@ textarea.form-control {
 .sidebar-header h2 {
     font-size: 1.5rem;
     margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .user-info p {
@@ -431,11 +309,12 @@ textarea.form-control {
     margin: 20px;
     background: var(--danger);
     color: white;
+    width: calc(100% - 40px);
 }
 
+/* Main Content */
 .main-content {
     flex: 1;
-    background: var(--light-gray);
     overflow-y: auto;
 }
 
@@ -446,6 +325,7 @@ textarea.form-control {
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
 }
 
 .header-actions {
@@ -476,8 +356,9 @@ textarea.form-control {
     justify-content: center;
 }
 
+/* Content Sections */
 .content-section {
-    padding: 30px;
+    padding: 0 30px 30px;
     display: none;
 }
 
@@ -518,6 +399,7 @@ textarea.form-control {
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 600px;
 }
 
 .data-table th,
@@ -531,10 +413,51 @@ textarea.form-control {
     background: var(--light);
     font-weight: 600;
     color: var(--dark);
+    position: sticky;
+    top: 0;
 }
 
 .data-table tr:hover {
     background: rgba(67, 97, 238, 0.05);
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-processing {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.status-completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-payment_requested {
+    background: #e0c3fc;
+    color: #4b0082;
+}
+
+.status-received {
+    background: #d1ecf1;
+    color: #0c5460;
 }
 
 /* Chat Styles */
@@ -574,10 +497,30 @@ textarea.form-control {
     max-width: 70%;
 }
 
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.message-header strong {
+    color: var(--primary);
+}
+
+.message-header small {
+    color: var(--gray);
+}
+
 .message.sent {
     background: var(--primary);
     color: white;
     margin-left: auto;
+}
+
+.message.sent .message-header strong,
+.message.sent .message-header small {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .message.received {
@@ -586,11 +529,19 @@ textarea.form-control {
     margin-right: auto;
 }
 
+.message.empty {
+    text-align: center;
+    color: var(--gray);
+    background: none;
+    border: none;
+}
+
 .chat-input {
     display: flex;
     padding: 20px;
     background: white;
     border-top: 1px solid var(--light-gray);
+    gap: 10px;
 }
 
 .chat-input input {
@@ -598,7 +549,18 @@ textarea.form-control {
     padding: 12px;
     border: 2px solid var(--light-gray);
     border-radius: 10px;
-    margin-right: 10px;
+}
+
+.file-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+#file-name {
+    font-size: 0.9rem;
+    color: var(--gray);
 }
 
 /* Form Styles */
@@ -607,11 +569,22 @@ textarea.form-control {
     padding: 20px;
     border-radius: 10px;
     margin-bottom: 15px;
+    border-left: 4px solid var(--primary);
 }
 
 .table-form h4 {
     color: var(--primary);
     margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.85rem;
+    color: var(--gray);
 }
 
 .price-summary {
@@ -632,6 +605,43 @@ textarea.form-control {
     font-size: 0.9rem;
 }
 
+/* Charts Container */
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.chart-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.chart-header {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.chart-header h3 {
+    color: var(--primary);
+    margin-bottom: 10px;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 300px;
+}
+
+/* Order Actions */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 /* Utility Classes */
 .text-center {
     text-align: center;
@@ -649,9 +659,29 @@ textarea.form-control {
     margin-bottom: 1rem;
 }
 
+.hidden {
+    display: none !important;
+}
+
+/* Loading Spinner */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--light-gray);
+    border-top: 4px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Responsive Design */
-@media (max-width: 768px) {
-    .container {
+@media (max-width: 992px) {
+    .dashboard {
         flex-direction: column;
     }
     
@@ -663,10 +693,18 @@ textarea.form-control {
     .sidebar-nav {
         display: flex;
         overflow-x: auto;
+        padding: 10px 0;
     }
     
     .nav-item {
         white-space: nowrap;
+        border-left: none;
+        border-bottom: 4px solid transparent;
+    }
+    
+    .nav-item.active {
+        border-left: none;
+        border-bottom-color: var(--primary);
     }
     
     .chat-container {
@@ -678,11 +716,73 @@ textarea.form-control {
         width: 100%;
     }
     
+    .charts-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-container canvas {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .content-section {
+        padding: 0 15px 15px;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+    
+    .main-header {
+        padding: 15px 20px;
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .data-table {
+        min-width: 800px;
+    }
+    
     .role-options {
         grid-template-columns: 1fr;
     }
     
     .auth-container {
         margin: 20px;
+    }
+    
+    .auth-form {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .chat-input {
+        flex-direction: column;
+    }
+    
+    .chat-input input {
+        margin-right: 0;
+        margin-bottom: 10px;
     }
 }

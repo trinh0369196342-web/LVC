@@ -3,36 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Quản lý In Ấn</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Người Bán - Hệ Thống Quản Lý In Ấn</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Hệ thống Quản lý In ấn</a>
-        </div>
-    </nav>
-
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-section="manage-orders">Quản lý đơn hàng</a>
-                        </li>
-                    </ul>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-store"></i> Người Bán</h2>
+                <div class="user-info">
+                    <p id="seller-name">Đang tải...</p>
+                    <p id="seller-email">Đang tải...</p>
                 </div>
             </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#account" class="nav-item active">
+                    <i class="fas fa-user-edit"></i> Thông Tin Tài Khoản
+                </a>
+                <a href="#dashboard" class="nav-item">
+                    <i class="fas fa-chart-bar"></i> Thống Kê
+                </a>
+                <a href="#manage-orders" class="nav-item">
+                    <i class="fas fa-tasks"></i> Quản Lý Đơn Hàng
+                </a>
+                <a href="#support" class="nav-item">
+                    <i class="fas fa-comments"></i> Hỗ Trợ Khách Hàng
+                </a>
+            </nav>
+            
+            <button class="btn btn-logout" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+            </button>
+        </div>
 
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <div>
-                    <h1 class="h2">Dashboard</h1>
+        <!-- Main Content -->
+        <div class="main-content">
+            <header class="main-header">
+                <h1 id="page-title">Thông Tin Tài Khoản</h1>
+                <div class="header-actions">
+                    <button class="btn btn-notification" onclick="toggleNotifications()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notification-count">0</span>
+                    </button>
+                    <button class="btn btn-info" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i> Làm mới
+                    </button>
                 </div>
-            </main>
+            </header>
+
+            <!-- Phần Thông Tin Tài Khoản -->
+            <section id="account" class="content-section active">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-edit"></i> Cập Nhật Thông Tin Cửa Hàng</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="seller-edit-name">Tên cửa hàng</label>
+                            <input type="text" id="seller-edit-name" class="form-control" placeholder="Nhập tên cửa hàng">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="seller-edit-phone">Số điện thoại liên hệ</label>
+                            <input type="tel" id="seller-edit-phone" class="form-control" placeholder="Nhập số điện thoại">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="seller-edit-address">Địa chỉ cửa hàng</label>
+                            <textarea id="seller-edit-address" class="form-control" rows="3" placeholder="Nhập địa chỉ cửa hàng"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="seller-edit-description">Mô tả cửa hàng</label>
+                            <textarea id="seller-edit-description" class="form-control" rows="4" placeholder="Nhập mô tả về cửa hàng"></textarea>
+                        </div>
+                        
+                        <button class="btn btn-primary btn-lg" id="save-seller-account">
+                            <i class="fas fa-save"></i> Lưu Thông Tin
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần Thống Kê -->
+            <section id="dashboard" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-pie"></i> Thống Kê & Báo Cáo</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="charts-container">
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3>Phân Loại Đơn Hàng</h3>
+                                    <p>Biểu đồ phân tích đơn hàng theo trạng thái</p>
+                                </div>
+                                <div class="chart-wrapper">
+                                    <canvas id="pieChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3>Xu Hướng Đơn Hàng</h3>
+                                    <p>Theo dõi đơn hàng theo thời gian</p>
+                                </div>
+                                <div class="chart-wrapper">
+                                    <canvas id="lineChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-summary mt-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h4>Tổng Quan Hôm Nay</h4>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                                        <div class="stat-item text-center">
+                                            <h5 style="color: var(--primary);">Tổng Đơn Hàng</h5>
+                                            <h3 id="total-orders">0</h3>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <h5 style="color: var(--success);">Đơn Hoàn Thành</h5>
+                                            <h3 id="completed-orders">0</h3>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <h5 style="color: var(--danger);">Đơn Đã Hủy</h5>
+                                            <h3 id="cancelled-orders">0</h3>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <h5 style="color: var(--warning);">Doanh Thu</h5>
+                                            <h3 id="today-revenue">0 VNĐ</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần Quản Lý Đơn Hàng -->
+            <section id="manage-orders" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-tasks"></i> Quản Lý Đơn Hàng</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-filters mb-3">
+                            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                <select id="order-filter-status" class="form-control" style="width: 200px;">
+                                    <option value="all">Tất cả trạng thái</option>
+                                    <option value="pending">Chờ xử lý</option>
+                                    <option value="processing">Đang xử lý</option>
+                                    <option value="payment_requested">Chờ thanh toán</option>
+                                    <option value="received">Đã nhận</option>
+                                    <option value="completed">Hoàn thành</option>
+                                    <option value="cancelled">Đã hủy</option>
+                                </select>
+                                
+                                <input type="date" id="order-filter-date" class="form-control" style="width: 200px;">
+                                
+                                <button class="btn btn-secondary" onclick="filterOrders()">
+                                    <i class="fas fa-filter"></i> Lọc
+                                </button>
+                                
+                                <button class="btn btn-info" onclick="resetFilters()">
+                                    <i class="fas fa-redo"></i> Đặt lại
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mã ĐH</th>
+                                        <th>Khách Hàng</th>
+                                        <th>Ngày Đặt</th>
+                                        <th>Số Bảng</th>
+                                        <th>Tổng Tiền</th>
+                                        <th>Trạng Thái</th>
+                                        <th>Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="seller-orders-table-body">
+                                    <tr>
+                                        <td colspan="7" class="text-center">
+                                            <div class="spinner"></div>
+                                            <p>Đang tải dữ liệu...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần Hỗ Trợ -->
+            <section id="support" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-headset"></i> Hỗ Trợ Khách Hàng</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chat-container">
+                            <div class="chat-sidebar">
+                                <div class="form-group">
+                                    <label for="seller-receiver-select">Chọn người nhận</label>
+                                    <select id="seller-receiver-select" class="form-control">
+                                        <option value="all">Tất cả khách hàng</option>
+                                        <option value="customer">Khách hàng cụ thể</option>
+                                        <option value="admin">Quản trị viên</option>
+                                        <option value="support">Bộ phận hỗ trợ</option>
+                                    </select>
+                                </div>
+                                
+                                <div id="specific-customer-container" class="hidden">
+                                    <div class="form-group">
+                                        <label for="specific-customer">Chọn khách hàng</label>
+                                        <select id="specific-customer" class="form-control">
+                                            <!-- Danh sách khách hàng sẽ được tải ở đây -->
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="file-upload">
+                                    <label for="seller-file-upload" class="btn btn-secondary">
+                                        <i class="fas fa-paperclip"></i> Chọn File
+                                    </label>
+                                    <input type="file" id="seller-file-upload" hidden>
+                                    <span id="seller-file-name">Chưa chọn file</span>
+                                </div>
+                            </div>
+                            
+                            <div class="chat-main">
+                                <div class="chat-messages" id="seller-chat-messages">
+                                    <div class="message empty">
+                                        <p><i class="fas fa-comments fa-2x"></i></p>
+                                        <p>Chưa có tin nhắn nào. Hãy bắt đầu trò chuyện!</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-input">
+                                    <input type="text" id="seller-message-input" class="form-control" placeholder="Nhập tin nhắn của bạn...">
+                                    <button class="btn btn-primary" id="seller-send-message">
+                                        <i class="fas fa-paper-plane"></i> Gửi
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
+
+    <!-- Modal cho Ghi Chú -->
+    <div id="notes-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-sticky-note"></i> Thêm Ghi Chú</h3>
+                <button class="btn btn-sm btn-danger" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="order-notes">Ghi chú nội bộ:</label>
+                    <textarea id="order-notes" class="form-control" rows="6" placeholder="Nhập ghi chú cho đơn hàng này..."></textarea>
+                </div>
+                <input type="hidden" id="current-order-id">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                <button class="btn btn-primary" onclick="saveOrderNotes()">Lưu Ghi Chú</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Khởi tạo trang người bán
+        document.addEventListener('DOMContentLoaded', function() {
+            initSellerPage();
+        });
+        
+        // Thêm CSS cho modal
+        const modalStyle = document.createElement('style');
+        modalStyle.textContent = `
+            .modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            
+            .modal.hidden {
+                display: none;
+            }
+            
+            .modal-content {
+                background: white;
+                border-radius: 15px;
+                width: 90%;
+                max-width: 500px;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            .modal-header {
+                padding: 20px;
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
+                color: white;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-radius: 15px 15px 0 0;
+            }
+            
+            .modal-body {
+                padding: 20px;
+            }
+            
+            .modal-footer {
+                padding: 20px;
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 1px solid var(--light-gray);
+            }
+        `;
+        document.head.appendChild(modalStyle);
+    </script>
 </body>
 </html>

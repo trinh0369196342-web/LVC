@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang Khách Hàng - Hệ Thống In Ấn</title>
+    <title>Khách Hàng - Hệ Thống Quản Lý In Ấn</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="dashboard">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -30,7 +31,7 @@
                     <i class="fas fa-list"></i> Đơn Hàng Của Tôi
                 </a>
                 <a href="#support" class="nav-item">
-                    <i class="fas fa-comments"></i> Hỗ Trợ
+                    <i class="fas fa-comments"></i> Hỗ Trợ Trực Tuyến
                 </a>
             </nav>
             
@@ -44,9 +45,9 @@
             <header class="main-header">
                 <h1 id="page-title">Thông Tin Tài Khoản</h1>
                 <div class="header-actions">
-                    <button class="btn btn-notification">
+                    <button class="btn btn-notification" onclick="toggleNotifications()">
                         <i class="fas fa-bell"></i>
-                        <span class="notification-badge">3</span>
+                        <span class="notification-badge" id="notification-count">0</span>
                     </button>
                 </div>
             </header>
@@ -55,25 +56,25 @@
             <section id="account" class="content-section active">
                 <div class="card">
                     <div class="card-header">
-                        <h3><i class="fas fa-edit"></i> Cập Nhật Thông Tin</h3>
+                        <h3><i class="fas fa-edit"></i> Cập Nhật Thông Tin Cá Nhân</h3>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
                             <label for="edit-name">Họ và tên</label>
-                            <input type="text" id="edit-name" placeholder="Nhập họ và tên">
+                            <input type="text" id="edit-name" class="form-control" placeholder="Nhập họ và tên">
                         </div>
                         
                         <div class="form-group">
                             <label for="edit-phone">Số điện thoại</label>
-                            <input type="tel" id="edit-phone" placeholder="Nhập số điện thoại">
+                            <input type="tel" id="edit-phone" class="form-control" placeholder="Nhập số điện thoại">
                         </div>
                         
                         <div class="form-group">
                             <label for="edit-address">Địa chỉ giao hàng</label>
-                            <textarea id="edit-address" rows="3" placeholder="Nhập địa chỉ giao hàng chi tiết"></textarea>
+                            <textarea id="edit-address" class="form-control" rows="3" placeholder="Nhập địa chỉ giao hàng chi tiết"></textarea>
                         </div>
                         
-                        <button class="btn btn-primary" id="save-account">
+                        <button class="btn btn-primary btn-lg" id="save-account">
                             <i class="fas fa-save"></i> Lưu Thông Tin
                         </button>
                     </div>
@@ -137,9 +138,11 @@
                                     </tr>
                                 </thead>
                                 <tbody id="orders-table-body">
-                                    <!-- Dữ liệu đơn hàng sẽ được tải ở đây -->
                                     <tr>
-                                        <td colspan="6" class="text-center">Đang tải dữ liệu...</td>
+                                        <td colspan="6" class="text-center">
+                                            <div class="spinner"></div>
+                                            <p>Đang tải dữ liệu...</p>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -162,6 +165,7 @@
                                     <select id="receiver-select" class="form-control">
                                         <option value="support">Bộ phận Hỗ trợ</option>
                                         <option value="seller">Người bán</option>
+                                        <option value="admin">Quản trị viên</option>
                                     </select>
                                 </div>
                                 
@@ -172,18 +176,24 @@
                                     <input type="file" id="file-upload" hidden>
                                     <span id="file-name">Chưa chọn file</span>
                                 </div>
+                                
+                                <div class="mt-3">
+                                    <button class="btn btn-info btn-sm" onclick="clearChat()">
+                                        <i class="fas fa-trash"></i> Xóa lịch sử
+                                    </button>
+                                </div>
                             </div>
                             
                             <div class="chat-main">
                                 <div class="chat-messages" id="chat-messages">
-                                    <!-- Tin nhắn sẽ được hiển thị ở đây -->
                                     <div class="message empty">
+                                        <p><i class="fas fa-comments fa-2x"></i></p>
                                         <p>Chưa có tin nhắn nào. Hãy bắt đầu trò chuyện!</p>
                                     </div>
                                 </div>
                                 
                                 <div class="chat-input">
-                                    <input type="text" id="message-input" placeholder="Nhập tin nhắn của bạn...">
+                                    <input type="text" id="message-input" class="form-control" placeholder="Nhập tin nhắn của bạn...">
                                     <button class="btn btn-primary" id="send-message">
                                         <i class="fas fa-paper-plane"></i> Gửi
                                     </button>
@@ -196,63 +206,12 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js"></script>
     <script src="script.js"></script>
     <script>
         // Khởi tạo trang khách hàng
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Kiểm tra đăng nhập
-            const auth = await checkAuth();
-            if (!auth || auth.role !== 'customer') {
-                window.location.href = 'index.html';
-                return;
-            }
-            
-            // Hiển thị thông tin người dùng
-            displayUserInfo();
-            
-            // Tải dữ liệu
-            loadAccountInfo();
-            loadOrders();
-            
-            // Khởi tạo chat
-            initChat();
-            
-            // Thiết lập navigation
-            setupNavigation();
-            
-            // Khởi tạo form đặt hàng
-            initOrderForm();
+        document.addEventListener('DOMContentLoaded', function() {
+            initCustomerPage();
         });
-        
-        function setupNavigation() {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    const target = this.getAttribute('href').substring(1);
-                    
-                    // Cập nhật active state
-                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-                    document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
-                    
-                    this.classList.add('active');
-                    document.getElementById(target).classList.add('active');
-                    document.getElementById('page-title').textContent = this.textContent.trim();
-                });
-            });
-        }
-        
-        async function displayUserInfo() {
-            const user = currentUser;
-            if (user) {
-                document.getElementById('customer-name').textContent = user.user_metadata?.full_name || 'Khách hàng';
-                document.getElementById('customer-email').textContent = user.email;
-            }
-        }
-        
-        // Các hàm xử lý khác sẽ được thêm vào script.js
     </script>
 </body>
 </html>
