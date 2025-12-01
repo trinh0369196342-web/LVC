@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Khách Hàng - Hệ Thống In Ấn</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-user"></i> Khách Hàng</h2>
+                <div class="user-info">
+                    <p id="customer-name">Đang tải...</p>
+                    <p id="customer-email">Đang tải...</p>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#account" class="nav-item active">
+                    <i class="fas fa-user-edit"></i> Thông Tin Tài Khoản
+                </a>
+                <a href="#order" class="nav-item">
+                    <i class="fas fa-shopping-cart"></i> Đặt Hàng In Ấn
+                </a>
+                <a href="#orders-list" class="nav-item">
+                    <i class="fas fa-list"></i> Đơn Hàng Của Tôi
+                </a>
+                <a href="#support" class="nav-item">
+                    <i class="fas fa-comments"></i> Hỗ Trợ
+                </a>
+            </nav>
+            
+            <button class="btn btn-logout" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <header class="main-header">
+                <h1 id="page-title">Thông Tin Tài Khoản</h1>
+                <div class="header-actions">
+                    <button class="btn btn-notification">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Phần Thông Tin Tài Khoản -->
+            <section id="account" class="content-section active">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-edit"></i> Cập Nhật Thông Tin</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="edit-name">Họ và tên</label>
+                            <input type="text" id="edit-name" placeholder="Nhập họ và tên">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="edit-phone">Số điện thoại</label>
+                            <input type="tel" id="edit-phone" placeholder="Nhập số điện thoại">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="edit-address">Địa chỉ giao hàng</label>
+                            <textarea id="edit-address" rows="3" placeholder="Nhập địa chỉ giao hàng chi tiết"></textarea>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="save-account">
+                            <i class="fas fa-save"></i> Lưu Thông Tin
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần Đặt Hàng -->
+            <section id="order" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-print"></i> Đặt Hàng In Ấn</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="num-tables">Số lượng bảng in (1-8)</label>
+                            <select id="num-tables" class="form-control">
+                                <option value="1">1 bảng</option>
+                                <option value="2">2 bảng</option>
+                                <option value="3">3 bảng</option>
+                                <option value="4">4 bảng</option>
+                                <option value="5">5 bảng</option>
+                                <option value="6">6 bảng</option>
+                                <option value="7">7 bảng</option>
+                                <option value="8">8 bảng</option>
+                            </select>
+                        </div>
+                        
+                        <div id="tables-container">
+                            <!-- Các form bảng sẽ được tạo động ở đây -->
+                        </div>
+                        
+                        <div class="price-summary">
+                            <h4>Tạm tính: <span id="temp-amount">0</span> VNĐ</h4>
+                            <p class="price-note">Giá mỗi bảng: 50,000 VNĐ</p>
+                        </div>
+                        
+                        <button class="btn btn-success btn-lg" id="create-order">
+                            <i class="fas fa-paper-plane"></i> Đặt Hàng
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần Danh Sách Đơn Hàng -->
+            <section id="orders-list" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-history"></i> Đơn Hàng Của Tôi</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mã ĐH</th>
+                                        <th>Ngày Đặt</th>
+                                        <th>Số Bảng</th>
+                                        <th>Tổng Tiền</th>
+                                        <th>Trạng Thái</th>
+                                        <th>Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders-table-body">
+                                    <!-- Dữ liệu đơn hàng sẽ được tải ở đây -->
+                                    <tr>
+                                        <td colspan="6" class="text-center">Đang tải dữ liệu...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phần Hỗ Trợ -->
+            <section id="support" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-headset"></i> Hỗ Trợ Trực Tuyến</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chat-container">
+                            <div class="chat-sidebar">
+                                <div class="form-group">
+                                    <label for="receiver-select">Chọn người nhận</label>
+                                    <select id="receiver-select" class="form-control">
+                                        <option value="support">Bộ phận Hỗ trợ</option>
+                                        <option value="seller">Người bán</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="file-upload">
+                                    <label for="file-upload" class="btn btn-secondary">
+                                        <i class="fas fa-paperclip"></i> Chọn File
+                                    </label>
+                                    <input type="file" id="file-upload" hidden>
+                                    <span id="file-name">Chưa chọn file</span>
+                                </div>
+                            </div>
+                            
+                            <div class="chat-main">
+                                <div class="chat-messages" id="chat-messages">
+                                    <!-- Tin nhắn sẽ được hiển thị ở đây -->
+                                    <div class="message empty">
+                                        <p>Chưa có tin nhắn nào. Hãy bắt đầu trò chuyện!</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-input">
+                                    <input type="text" id="message-input" placeholder="Nhập tin nhắn của bạn...">
+                                    <button class="btn btn-primary" id="send-message">
+                                        <i class="fas fa-paper-plane"></i> Gửi
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Khởi tạo trang khách hàng
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Kiểm tra đăng nhập
+            const auth = await checkAuth();
+            if (!auth || auth.role !== 'customer') {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Hiển thị thông tin người dùng
+            displayUserInfo();
+            
+            // Tải dữ liệu
+            loadAccountInfo();
+            loadOrders();
+            
+            // Khởi tạo chat
+            initChat();
+            
+            // Thiết lập navigation
+            setupNavigation();
+            
+            // Khởi tạo form đặt hàng
+            initOrderForm();
+        });
+        
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const target = this.getAttribute('href').substring(1);
+                    
+                    // Cập nhật active state
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    document.getElementById(target).classList.add('active');
+                    document.getElementById('page-title').textContent = this.textContent.trim();
+                });
+            });
+        }
+        
+        async function displayUserInfo() {
+            const user = currentUser;
+            if (user) {
+                document.getElementById('customer-name').textContent = user.user_metadata?.full_name || 'Khách hàng';
+                document.getElementById('customer-email').textContent = user.email;
+            }
+        }
+        
+        // Các hàm xử lý khác sẽ được thêm vào script.js
+    </script>
+</body>
+</html>
