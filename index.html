@@ -3,162 +3,463 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng Nhập - Hệ Thống Quản Lý In Ấn</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Hệ Thống Đặt In Ấn</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .auth-left {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .auth-right {
+            padding: 40px;
+        }
+        
+        .auth-tabs .nav-link {
+            border: none;
+            font-weight: 500;
+            color: #6c757d;
+            padding: 10px 20px;
+        }
+        
+        .auth-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo i {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .features {
+            list-style: none;
+            padding: 0;
+            margin-top: 30px;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            font-size: 0.95rem;
+        }
+        
+        .features li i {
+            margin-right: 10px;
+        }
+        
+        .role-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        
+        .role-badge.customer {
+            background: #4cc9f0;
+        }
+        
+        .role-badge.seller {
+            background: #f72585;
+        }
+        
+        .role-badge.admin {
+            background: #7209b7;
+        }
+        
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-container">
-        <div class="auth-header">
-            <h1><i class="fas fa-print"></i> Hệ Thống Quản Lý In Ấn</h1>
-            <p>Đăng nhập hoặc đăng ký để tiếp tục</p>
-        </div>
-
-        <div class="auth-tabs">
-            <button class="tab-btn active" data-tab="login">Đăng Nhập</button>
-            <button class="tab-btn" data-tab="register">Đăng Ký</button>
-        </div>
-
-        <!-- Form Đăng Nhập -->
-        <div id="login-form" class="auth-form active">
-            <div class="form-group">
-                <label for="login-email"><i class="fas fa-envelope"></i> Email</label>
-                <input type="email" id="login-email" class="form-control" placeholder="Nhập email của bạn">
-            </div>
-            
-            <div class="form-group">
-                <label for="login-password"><i class="fas fa-lock"></i> Mật khẩu</label>
-                <input type="password" id="login-password" class="form-control" placeholder="Nhập mật khẩu">
-            </div>
-            
-            <button class="btn btn-primary btn-lg" id="login-btn">
-                <i class="fas fa-sign-in-alt"></i> Đăng Nhập
-            </button>
-            
-            <div class="auth-divider">
-                <span>HOẶC</span>
-            </div>
-            
-            <div class="role-selection">
-                <p>Chọn vai trò đăng nhập:</p>
-                <div class="role-options">
-                    <label class="role-option">
-                        <input type="radio" name="login-role" value="customer" checked>
-                        <div class="role-card">
-                            <i class="fas fa-user"></i>
-                            <h3>Khách Hàng</h3>
-                            <p>Đặt hàng in ấn</p>
-                        </div>
-                    </label>
+    <div class="container">
+        <div class="auth-container">
+            <div class="row g-0">
+                <!-- Left Column: Information -->
+                <div class="col-lg-6 auth-left">
+                    <div class="logo">
+                        <i class="bi bi-printer-fill"></i>
+                        <h1>Hệ Thống Đặt In</h1>
+                        <p class="mb-0">Quản lý đơn hàng in ấn chuyên nghiệp</p>
+                    </div>
                     
-                    <label class="role-option">
-                        <input type="radio" name="login-role" value="seller">
-                        <div class="role-card">
-                            <i class="fas fa-store"></i>
-                            <h3>Người Bán</h3>
-                            <p>Quản lý đơn hàng</p>
-                        </div>
-                    </label>
+                    <div class="mb-4">
+                        <h4><i class="bi bi-people-fill"></i> 3 Vai trò trong hệ thống:</h4>
+                        <ul class="features">
+                            <li>
+                                <span class="role-badge customer">Khách hàng</span>
+                                <strong>Đặt in sản phẩm</strong>
+                                <div class="small">Tạo đơn hàng, theo dõi trạng thái, chat hỗ trợ</div>
+                            </li>
+                            <li>
+                                <span class="role-badge seller">Người bán</span>
+                                <strong>Quản lý cửa hàng</strong>
+                                <div class="small">Xử lý đơn hàng, thống kê doanh thu, hỗ trợ khách</div>
+                            </li>
+                            <li>
+                                <span class="role-badge admin">Quản trị viên</span>
+                                <strong>Quản lý hệ thống</strong>
+                                <div class="small">Giám sát toàn bộ hệ thống, phân quyền, báo cáo</div>
+                            </li>
+                        </ul>
+                    </div>
                     
-                    <label class="role-option">
-                        <input type="radio" name="login-role" value="admin">
-                        <div class="role-card">
-                            <i class="fas fa-cog"></i>
-                            <h3>Quản Trị Viên</h3>
-                            <p>Quản lý hệ thống</p>
+                    <div class="mt-auto">
+                        <div class="alert alert-light" role="alert">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Lưu ý:</strong> Chọn đúng vai trò khi đăng ký. Vai trò có thể được thay đổi bởi Admin sau này.
                         </div>
-                    </label>
+                    </div>
+                </div>
+                
+                <!-- Right Column: Login/Register -->
+                <div class="col-lg-6 auth-right">
+                    <ul class="nav nav-tabs auth-tabs mb-4" id="authTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="login-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#login" type="button">Đăng Nhập</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="register-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#register" type="button">Đăng Ký</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="authTabsContent">
+                        <!-- Login Form -->
+                        <div class="tab-pane fade show active" id="login">
+                            <div id="loginAlert" class="alert alert-danger" role="alert">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <span id="loginAlertText"></span>
+                            </div>
+                            
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label for="loginEmail" class="form-label">
+                                        <i class="bi bi-envelope"></i> Email
+                                    </label>
+                                    <input type="email" class="form-control" id="loginEmail" 
+                                           placeholder="nhập email của bạn" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="loginPassword" class="form-label">
+                                        <i class="bi bi-lock"></i> Mật khẩu
+                                    </label>
+                                    <input type="password" class="form-control" id="loginPassword" 
+                                           placeholder="nhập mật khẩu" required>
+                                    <div class="form-text">
+                                        <a href="#" class="text-decoration-none" onclick="showForgotPassword()">
+                                            Quên mật khẩu?
+                                        </a>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="rememberMe">
+                                    <label class="form-check-label" for="rememberMe">Ghi nhớ đăng nhập</label>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary w-100" id="loginBtn">
+                                    <div class="loading-spinner" id="loginSpinner"></div>
+                                    <span id="loginBtnText"><i class="bi bi-box-arrow-in-right"></i> Đăng Nhập</span>
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Register Form -->
+                        <div class="tab-pane fade" id="register">
+                            <div id="registerAlert" class="alert alert-danger" role="alert">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <span id="registerAlertText"></span>
+                            </div>
+                            
+                            <form id="registerForm">
+                                <div class="mb-3">
+                                    <label for="registerEmail" class="form-label">
+                                        <i class="bi bi-envelope"></i> Email
+                                    </label>
+                                    <input type="email" class="form-control" id="registerEmail" 
+                                           placeholder="nhập email của bạn" required>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="registerPassword" class="form-label">
+                                            <i class="bi bi-lock"></i> Mật khẩu
+                                        </label>
+                                        <input type="password" class="form-control" id="registerPassword" 
+                                               placeholder="ít nhất 6 ký tự" required minlength="6">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="registerConfirmPassword" class="form-label">
+                                            <i class="bi bi-lock-fill"></i> Xác nhận mật khẩu
+                                        </label>
+                                        <input type="password" class="form-control" id="registerConfirmPassword" 
+                                               placeholder="nhập lại mật khẩu" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-person-badge"></i> Vai trò
+                                    </label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="form-check card border-primary">
+                                                <div class="card-body text-center p-3">
+                                                    <input class="form-check-input" type="radio" name="registerRole" 
+                                                           id="roleCustomer" value="customer" checked>
+                                                    <label class="form-check-label d-block" for="roleCustomer">
+                                                        <i class="bi bi-person-fill d-block fs-2 mb-2"></i>
+                                                        <strong>Khách hàng</strong>
+                                                        <div class="small text-muted">Đặt in và theo dõi đơn hàng</div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="form-check card">
+                                                <div class="card-body text-center p-3">
+                                                    <input class="form-check-input" type="radio" name="registerRole" 
+                                                           id="roleSeller" value="seller">
+                                                    <label class="form-check-label d-block" for="roleSeller">
+                                                        <i class="bi bi-shop d-block fs-2 mb-2"></i>
+                                                        <strong>Người bán</strong>
+                                                        <div class="small text-muted">Quản lý cửa hàng và đơn hàng</div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="agreeTerms" required>
+                                        <label class="form-check-label" for="agreeTerms">
+                                            Tôi đồng ý với <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">điều khoản dịch vụ</a>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success w-100" id="registerBtn">
+                                    <div class="loading-spinner" id="registerSpinner"></div>
+                                    <span id="registerBtnText"><i class="bi bi-person-plus"></i> Đăng Ký</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- Form Đăng Ký -->
-        <div id="register-form" class="auth-form">
-            <div class="form-group">
-                <label for="register-name"><i class="fas fa-user"></i> Họ và tên</label>
-                <input type="text" id="register-name" class="form-control" placeholder="Nhập họ và tên đầy đủ">
+    </div>
+    
+    <!-- Terms Modal -->
+    <div class="modal fade" id="termsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-file-text"></i> Điều khoản dịch vụ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>1. Điều khoản sử dụng</h6>
+                    <p>Bằng việc đăng ký tài khoản, bạn đồng ý với các điều khoản sau:</p>
+                    <ul>
+                        <li>Cung cấp thông tin chính xác và đầy đủ</li>
+                        <li>Bảo mật tài khoản và mật khẩu của bạn</li>
+                        <li>Chịu trách nhiệm với tất cả các hoạt động trên tài khoản của bạn</li>
+                        <li>Không sử dụng hệ thống cho mục đích bất hợp pháp</li>
+                    </ul>
+                    
+                    <h6>2. Quyền riêng tư</h6>
+                    <p>Chúng tôi cam kết bảo vệ thông tin cá nhân của bạn và chỉ sử dụng cho mục đích quản lý hệ thống.</p>
+                    
+                    <h6>3. Quyền của người dùng</h6>
+                    <p>Mỗi vai trò có quyền hạn khác nhau trong hệ thống. Admin có quyền thay đổi vai trò của người dùng khi cần thiết.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tôi hiểu</button>
+                </div>
             </div>
-            
-            <div class="form-group">
-                <label for="register-email"><i class="fas fa-envelope"></i> Email</label>
-                <input type="email" id="register-email" class="form-control" placeholder="Nhập email">
-            </div>
-            
-            <div class="form-group">
-                <label for="register-phone"><i class="fas fa-phone"></i> Số điện thoại</label>
-                <input type="tel" id="register-phone" class="form-control" placeholder="Nhập số điện thoại">
-            </div>
-            
-            <div class="form-group">
-                <label for="register-password"><i class="fas fa-lock"></i> Mật khẩu</label>
-                <input type="password" id="register-password" class="form-control" placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)">
-            </div>
-            
-            <div class="form-group">
-                <label for="register-confirm-password"><i class="fas fa-lock"></i> Xác nhận mật khẩu</label>
-                <input type="password" id="register-confirm-password" class="form-control" placeholder="Nhập lại mật khẩu">
-            </div>
-            
-            <div class="form-group">
-                <label>Vai trò đăng ký:</label>
-                <select id="register-role" class="form-control">
-                    <option value="customer">Khách Hàng</option>
-                    <option value="seller">Người Bán</option>
-                </select>
-            </div>
-            
-            <button class="btn btn-primary btn-lg" id="register-btn">
-                <i class="fas fa-user-plus"></i> Đăng Ký
-            </button>
         </div>
-
-        <div class="auth-message" id="auth-message"></div>
+    </div>
+    
+    <!-- Forgot Password Modal -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-key"></i> Quên mật khẩu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="forgotPasswordAlert" class="alert" role="alert" style="display: none;"></div>
+                    <div class="mb-3">
+                        <label for="forgotPasswordEmail" class="form-label">Email của bạn</label>
+                        <input type="email" class="form-control" id="forgotPasswordEmail" 
+                               placeholder="nhập email để đặt lại mật khẩu">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="sendPasswordResetEmail()">
+                        Gửi email đặt lại
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
     <script>
-        // Khởi tạo trang đăng nhập
+        // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            // Xử lý tab đăng nhập/đăng ký
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tab = btn.dataset.tab;
+            // Switch between tabs
+            window.switchTab = function(tabName) {
+                const tab = new bootstrap.Tab(document.getElementById(`${tabName}-tab`));
+                tab.show();
+                
+                // Clear alerts when switching tabs
+                hideAlert('loginAlert');
+                hideAlert('registerAlert');
+            };
+            
+            // Show forgot password modal
+            window.showForgotPassword = function() {
+                const modal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
+                modal.show();
+            };
+            
+            // Send password reset email
+            window.sendPasswordResetEmail = async function() {
+                const email = document.getElementById('forgotPasswordEmail').value;
+                const alertDiv = document.getElementById('forgotPasswordAlert');
+                
+                if (!email) {
+                    showAlert(alertDiv, 'Vui lòng nhập email', 'danger');
+                    return;
+                }
+                
+                try {
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: window.location.origin + '/index.html'
+                    });
                     
-                    // Cập nhật tab active
-                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+                    if (error) throw error;
                     
-                    btn.classList.add('active');
-                    document.getElementById(`${tab}-form`).classList.add('active');
-                });
-            });
+                    showAlert(alertDiv, 'Đã gửi email đặt lại mật khẩu. Vui lòng kiểm tra hộp thư.', 'success');
+                    document.getElementById('forgotPasswordEmail').value = '';
+                    
+                    // Auto close modal after 3 seconds
+                    setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('forgotPasswordModal'));
+                        modal.hide();
+                    }, 3000);
+                    
+                } catch (error) {
+                    showAlert(alertDiv, 'Lỗi: ' + error.message, 'danger');
+                }
+            };
             
-            // Xử lý đăng nhập
-            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            // Helper functions for alerts
+            window.showAlert = function(elementId, message, type) {
+                const alertDiv = document.getElementById(elementId);
+                alertDiv.className = `alert alert-${type}`;
+                alertDiv.querySelector('span').textContent = message;
+                alertDiv.style.display = 'block';
+            };
             
-            // Xử lý đăng ký
-            document.getElementById('register-btn').addEventListener('click', handleRegister);
+            window.hideAlert = function(elementId) {
+                const alertDiv = document.getElementById(elementId);
+                alertDiv.style.display = 'none';
+            };
             
-            // Cho phép nhấn Enter để đăng nhập
-            document.getElementById('login-password').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') handleLogin();
-            });
+            // Show success alert
+            window.showSuccessAlert = function(elementId, message) {
+                showAlert(elementId, message, 'success');
+            };
             
-            // Kiểm tra nếu đã đăng nhập thì chuyển hướng
-            checkAuthAndRedirect();
+            // Show error alert
+            window.showErrorAlert = function(elementId, message) {
+                showAlert(elementId, message, 'danger');
+            };
+            
+            // Start showing loading state
+            window.startLoading = function(buttonId, spinnerId) {
+                const button = document.getElementById(buttonId);
+                const spinner = document.getElementById(spinnerId);
+                const buttonText = document.getElementById(buttonId + 'Text');
+                
+                if (button && spinner && buttonText) {
+                    button.disabled = true;
+                    spinner.style.display = 'inline-block';
+                }
+            };
+            
+            // Stop showing loading state
+            window.stopLoading = function(buttonId, spinnerId) {
+                const button = document.getElementById(buttonId);
+                const spinner = document.getElementById(spinnerId);
+                const buttonText = document.getElementById(buttonId + 'Text');
+                
+                if (button && spinner && buttonText) {
+                    button.disabled = false;
+                    spinner.style.display = 'none';
+                }
+            };
         });
-        
-        function showAuthMessage(message, type) {
-            const messageDiv = document.getElementById('auth-message');
-            messageDiv.textContent = message;
-            messageDiv.className = `auth-message ${type}`;
-            messageDiv.style.display = 'block';
-            
-            setTimeout(() => {
-                messageDiv.style.display = 'none';
-            }, 5000);
-        }
     </script>
 </body>
 </html>
