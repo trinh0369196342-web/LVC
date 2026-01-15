@@ -1,14 +1,4 @@
 // ====================
-// SUPABASE CONFIGURATION
-// ====================
-// Thay thế bằng thông tin Supabase của bạn
-const SUPABASE_URL = 'https://mwjzrkfqbuehwfldjdfr.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_J2UJCh1_RAJi-RQc73OoLQ_zOT7XvZh';
-
-// Khởi tạo Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ====================
 // GAME CONSTANTS
 // ====================
 const MAP_WIDTH = 4000;
@@ -58,7 +48,6 @@ const REGIONS = {
 let snake = [];
 let foods = [];
 let obstacles = [];
-let otherPlayers = new Map();
 let gameInterval;
 let gameSpeed = 7;
 let score = 0;
@@ -93,12 +82,20 @@ let joystickDistance = 0;
 
 // User data
 let currentUser = null;
-let userProfile = null;
+let userProfile = {
+    id: 'guest',
+    username: 'Khách',
+    high_score: 0,
+    total_food: 0,
+    games_played: 0,
+    total_score: 0
+};
 
-// Chat
-let chatMessages = [];
-let onlineUsers = new Map();
-let currentChatTab = 'global';
+// Stats
+let highScore = 0;
+let totalFood = 0;
+let gamesPlayed = 0;
+let totalScore = 0;
 
 // Canvas contexts
 const canvas = document.getElementById('gameCanvas');
@@ -107,330 +104,133 @@ const minimapCanvas = document.getElementById('minimapCanvas');
 const minimapCtx = minimapCanvas.getContext('2d');
 
 // ====================
-// AUTHENTICATION
+// AUTHENTICATION (SIMULATED)
 // ====================
-async function initializeAuth() {
-    // Check current session
-    const { data: { session }, error } = await supabase.auth.getSession();
+function initializeAuth() {
+    // Try to load saved user data
+    loadUserData();
     
-    if (session) {
-        currentUser = session.user;
-        await loadUserProfile();
-        showGame();
-    } else {
-        showAuthModal();
-    }
+    // Show auth modal
+    showAuthModal();
     
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN') {
-            currentUser = session.user;
-            await loadUserProfile();
-            showGame();
-            showNotification('Đăng nhập thành công!', 'success');
-        } else if (event === 'SIGNED_OUT') {
-            currentUser = null;
-            userProfile = null;
-            showAuthModal();
-        }
-    });
+    // Update UI with loaded data
+    updateUserUI();
+    updateStats();
 }
 
-async function handleLogin(event) {
+function loadUserData() {
+    try {
+        const savedData = localStorage.getItem('snakeUniverseData');
+        if (savedData) {
+            const data = JSON.parse(savedData);
+            userProfile = data.userProfile || userProfile;
+            highScore = data.highScore || 0;
+            totalFood = data.totalFood || 0;
+            gamesPlayed = data.gamesPlayed || 0;
+            totalScore = data.totalScore || 0;
+            
+            // Load snake customization
+            if (data.snakeColors) {
+                snakeColors = data.snakeColors;
+                updateCustomizationUI();
+            }
+            
+            showNotification('Đã tải dữ liệu đã lưu', 'success');
+        }
+    } catch (error) {
+        console.error('Lỗi khi tải dữ liệu:', error);
+    }
+}
+
+function saveUserData() {
+    try {
+        const data = {
+            userProfile,
+            highScore,
+            totalFood,
+            gamesPlayed,
+            totalScore,
+            snakeColors,
+            lastSaved: new Date().toISOString()
+        };
+        localStorage.setItem('snakeUniverseData', JSON.stringify(data));
+    } catch (error) {
+        console.error('Lỗi khi lưu dữ liệu:', error);
+    }
+}
+
+function handleLogin(event) {
     event.preventDefault();
     
-    const email = document.getElementById('loginEmail').value;
+    const username = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     
-    showLoading('Đang đăng nhập...');
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-    });
-    
-    hideLoading();
-    
-    if (error) {
-        showNotification(error.message, 'error');
+    if (!username || !password) {
+        showNotification('Vui lòng nhập tên đăng nhập và mật khẩu', 'warning');
         return;
     }
     
-    showNotification('Đăng nhập thành công!', 'success');
+    // Simulated login for demo
+    userProfile.username = username;
+    userProfile.id = 'user-' + Date.now();
+    
+    showNotification(`Chào mừng ${username}! (Chế độ demo)`, 'success');
+    showGame();
+    saveUserData();
 }
 
-async function handleRegister(event) {
+function handleRegister(event) {
     event.preventDefault();
     
-    const email = document.getElementById('registerEmail').value;
     const username = document.getElementById('registerUsername').value;
     const password = document.getElementById('registerPassword').value;
     const confirmPassword = document.getElementById('registerConfirm').value;
     
+    if (!username || !password) {
+        showNotification('Vui lòng nhập đầy đủ thông tin', 'warning');
+        return;
+    }
+    
     if (password !== confirmPassword) {
-        showNotification('Mật khẩu không khớp!', 'error');
+        showNotification('Mật khẩu không khớp', 'error');
         return;
     }
     
     if (username.length < 3) {
-        showNotification('Tên người dùng phải có ít nhất 3 ký tự', 'error');
+        showNotification('Tên đăng nhập phải có ít nhất 3 ký tự', 'warning');
         return;
     }
     
-    showLoading('Đang tạo tài khoản...');
+    // Simulated registration for demo
+    userProfile.username = username;
+    userProfile.id = 'user-' + Date.now();
+    userProfile.high_score = 0;
+    userProfile.total_food = 0;
+    userProfile.games_played = 0;
     
-    // Register user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password
-    });
-    
-    if (authError) {
-        hideLoading();
-        showNotification(authError.message, 'error');
-        return;
-    }
-    
-    // Create profile
-    const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-            id: authData.user.id,
-            email: email,
-            username: username,
-            high_score: 0,
-            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
-        }]);
-    
-    if (profileError) {
-        hideLoading();
-        showNotification(profileError.message, 'error');
-        return;
-    }
-    
-    // Create default snake customization
-    const { error: customizationError } = await supabase
-        .from('snake_customizations')
-        .insert([{
-            user_id: authData.user.id,
-            color_primary: '#00adb5',
-            color_secondary: '#34495e',
-            pattern: 'solid',
-            accessories: {}
-        }]);
-    
-    hideLoading();
-    
-    if (customizationError) {
-        console.error('Customization error:', customizationError);
-    }
-    
-    showNotification('Đăng ký thành công! Vui lòng kiểm tra email để xác nhận.', 'success');
+    showNotification(`Đăng ký thành công! Chào mừng ${username}`, 'success');
     switchToLogin();
+    saveUserData();
 }
 
-async function loadUserProfile() {
-    if (!currentUser) return;
+function playAsGuest() {
+    userProfile = {
+        id: 'guest-' + Date.now(),
+        username: 'Khách',
+        high_score: highScore,
+        total_food: totalFood,
+        games_played: gamesPlayed,
+        total_score: totalScore
+    };
     
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single();
-    
-    if (error) {
-        console.error('Error loading profile:', error);
-        return;
-    }
-    
-    userProfile = data;
-    updateUserUI();
-    
-    // Load snake customization
-    await loadSnakeCustomization();
+    showNotification('Đang chơi với tư cách khách. Dữ liệu được lưu trên trình duyệt.', 'info');
+    showGame();
 }
 
-async function loadSnakeCustomization() {
-    if (!currentUser) return;
-    
-    const { data, error } = await supabase
-        .from('snake_customizations')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .single();
-    
-    if (error) {
-        console.error('Error loading customization:', error);
-        return;
-    }
-    
-    if (data) {
-        snakeColors.primary = data.color_primary || '#00adb5';
-        snakeColors.secondary = data.color_secondary || '#34495e';
-        snakeColors.pattern = data.pattern || 'solid';
-        
-        // Update UI
-        document.querySelectorAll('.color-option').forEach(option => {
-            option.classList.remove('active');
-            if (option.dataset.color === snakeColors.primary) {
-                option.classList.add('active');
-            }
-        });
-        
-        document.querySelectorAll('.pattern-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.pattern === snakeColors.pattern) {
-                btn.classList.add('active');
-            }
-        });
-    }
-}
-
-async function saveSnakeCustomization() {
-    if (!currentUser) {
-        showNotification('Vui lòng đăng nhập để lưu tùy chỉnh', 'warning');
-        return;
-    }
-    
-    const { data, error } = await supabase
-        .from('snake_customizations')
-        .upsert([{
-            user_id: currentUser.id,
-            color_primary: snakeColors.primary,
-            color_secondary: snakeColors.secondary,
-            pattern: snakeColors.pattern,
-            updated_at: new Date()
-        }]);
-    
-    if (error) {
-        showNotification('Lỗi khi lưu tùy chỉnh', 'error');
-        console.error('Error saving customization:', error);
-        return;
-    }
-    
-    showNotification('Đã lưu tùy chỉnh rắn!', 'success');
-}
-
-async function handleLogout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-        showNotification('Lỗi khi đăng xuất', 'error');
-    }
-}
-
-// ====================
-// CHAT SYSTEM
-// ====================
-async function initializeChat() {
-    if (!currentUser) return;
-    
-    // Subscribe to chat messages
-    const channel = supabase
-        .channel('chat')
-        .on('postgres_changes', 
-            { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-            (payload) => handleNewChatMessage(payload.new)
-        )
-        .subscribe();
-    
-    // Load recent messages
-    await loadChatMessages();
-    
-    // Load online users
-    await loadOnlineUsers();
-    
-    // Start online status updates
-    updateOnlineStatus();
-    setInterval(updateOnlineStatus, 30000); // Update every 30 seconds
-}
-
-async function loadChatMessages() {
-    const { data, error } = await supabase
-        .from('chat_messages')
-        .select(`
-            *,
-            profiles:user_id (
-                username,
-                avatar_url
-            )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(50);
-    
-    if (error) {
-        console.error('Error loading chat:', error);
-        return;
-    }
-    
-    chatMessages = data.reverse();
-    renderChatMessages();
-}
-
-async function handleNewChatMessage(message) {
-    chatMessages.push(message);
-    if (chatMessages.length > 100) {
-        chatMessages.shift();
-    }
-    
-    renderMessage(message);
-    
-    // Show notification for important messages
-    if (message.type === 'system' || message.user_id === currentUser?.id) {
-        showNotification(`Tin nhắn mới từ ${message.profiles?.username || 'Hệ thống'}`, 'info');
-    }
-}
-
-async function sendChatMessage(messageText) {
-    if (!currentUser || !messageText.trim()) return;
-    
-    const { data, error } = await supabase
-        .from('chat_messages')
-        .insert([{
-            user_id: currentUser.id,
-            message: messageText,
-            type: currentChatTab,
-            created_at: new Date()
-        }]);
-    
-    if (error) {
-        console.error('Error sending message:', error);
-        showNotification('Lỗi khi gửi tin nhắn', 'error');
-    }
-}
-
-async function loadOnlineUsers() {
-    if (!currentUser) return;
-    
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url, high_score, last_seen')
-        .order('high_score', { ascending: false })
-        .limit(50);
-    
-    if (error) {
-        console.error('Error loading online users:', error);
-        return;
-    }
-    
-    onlineUsers.clear();
-    data.forEach(user => {
-        onlineUsers.set(user.id, user);
-    });
-    
-    renderOnlineUsers();
-    updateOnlineCount();
-}
-
-async function updateOnlineStatus() {
-    if (!currentUser) return;
-    
-    const { error } = await supabase
-        .from('profiles')
-        .update({ last_seen: new Date() })
-        .eq('id', currentUser.id);
-    
-    if (error) {
-        console.error('Error updating online status:', error);
+function handleLogout() {
+    if (confirm('Bạn có muốn đăng xuất không?')) {
+        saveUserData();
+        location.reload();
     }
 }
 
@@ -506,8 +306,9 @@ function startGame() {
     if (gameInterval) clearInterval(gameInterval);
     gameInterval = setInterval(updateGame, 1000 / 60);
     
-    // Record game start
-    recordGameStart();
+    // Increment games played
+    gamesPlayed++;
+    updateStats();
 }
 
 function pauseGame() {
@@ -535,13 +336,19 @@ function gameOver() {
     // Show game over screen
     document.getElementById('gameOverScreen').style.display = 'flex';
     
-    // Save game session
-    saveGameSession();
+    // Update stats
+    updateStats();
     
     // Update high score if needed
-    if (score > (userProfile?.high_score || 0)) {
-        updateHighScore();
+    if (score > highScore) {
+        highScore = score;
+        userProfile.high_score = highScore;
+        showNotification(`Kỷ lục mới: ${score} điểm!`, 'success');
+        updateStats();
     }
+    
+    // Save data
+    saveUserData();
 }
 
 // ====================
@@ -609,6 +416,8 @@ function checkFoodCollisions() {
             // Eat food
             score += food.value || 10;
             snakeLength += food.growth || 1;
+            totalFood++;
+            userProfile.total_food = totalFood;
             
             // Remove food
             foods.splice(i, 1);
@@ -616,13 +425,13 @@ function checkFoodCollisions() {
             // Generate new food
             generateFoods(1);
             
-            // Play sound effect
-            playSound('eat');
-            
             // Show notification for special food
             if (food.special) {
                 showNotification(`Ăn được thức ăn đặc biệt! +${food.value} điểm`, 'success');
             }
+            
+            // Update stats
+            updateStats();
         }
     }
 }
@@ -813,9 +622,6 @@ function renderGame() {
     // Draw snake
     drawSnake();
     
-    // Draw other players
-    drawOtherPlayers();
-    
     // Draw player direction
     drawDirectionIndicator();
 }
@@ -981,11 +787,6 @@ function drawSnakePattern(x, y, radius, index) {
             // Already handled by color interpolation
             break;
     }
-}
-
-function drawOtherPlayers() {
-    // This would draw other players in multiplayer mode
-    // For now, it's a placeholder
 }
 
 function drawDirectionIndicator() {
@@ -1295,12 +1096,34 @@ function updateUI() {
 }
 
 function updateUserUI() {
-    if (!userProfile) return;
-    
     document.getElementById('usernameDisplay').textContent = userProfile.username;
-    document.getElementById('userHighScore').textContent = userProfile.high_score || 0;
-    document.getElementById('userAvatar').src = userProfile.avatar_url || 
-        `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.username}`;
+    document.getElementById('userHighScore').textContent = userProfile.high_score;
+    document.getElementById('userAvatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile.username}`;
+    document.getElementById('gameMode').textContent = userProfile.id.startsWith('guest') ? 'Khách' : 'Người dùng';
+}
+
+function updateStats() {
+    // Update sidebar stats
+    document.getElementById('highScore').textContent = highScore;
+    document.getElementById('totalFood').textContent = totalFood;
+    document.getElementById('gamesPlayed').textContent = gamesPlayed;
+    
+    const avgScore = gamesPlayed > 0 ? Math.floor(totalScore / gamesPlayed) : 0;
+    document.getElementById('avgScore').textContent = avgScore;
+    
+    // Update chat stats
+    document.getElementById('chatHighScore').textContent = highScore;
+    document.getElementById('chatFoodEaten').textContent = totalFood;
+    document.getElementById('chatGamesPlayed').textContent = gamesPlayed;
+    
+    // Update leaderboard
+    document.getElementById('leaderboardScore').textContent = highScore;
+    
+    // Update user profile
+    userProfile.high_score = highScore;
+    userProfile.total_food = totalFood;
+    userProfile.games_played = gamesPlayed;
+    userProfile.total_score = totalScore;
 }
 
 function updateRegionInfo() {
@@ -1310,9 +1133,56 @@ function updateRegionInfo() {
     document.getElementById('playerRegion').textContent = region.name;
 }
 
-function updateOnlineCount() {
-    document.getElementById('onlineCount').textContent = onlineUsers.size;
-    document.getElementById('totalPlayers').textContent = onlineUsers.size;
+function updateCustomizationUI() {
+    // Update color pickers
+    document.querySelectorAll('.color-option').forEach(option => {
+        option.classList.remove('active');
+        if (option.dataset.color === snakeColors.primary) {
+            option.classList.add('active');
+        }
+    });
+    
+    // Update pattern buttons
+    document.querySelectorAll('.pattern-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.pattern === snakeColors.pattern) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// ====================
+// CUSTOMIZATION
+// ====================
+function saveSnakeCustomization() {
+    snakeColors = {
+        primary: document.querySelector('.color-option.active[data-color]')?.dataset.color || '#00adb5',
+        secondary: document.querySelectorAll('.color-option[data-color]')[1]?.dataset.color || '#34495e',
+        pattern: document.querySelector('.pattern-btn.active')?.dataset.pattern || 'solid',
+        glow: '#00ff88',
+        eyes: '#ffffff'
+    };
+    
+    saveUserData();
+    showNotification('Đã lưu tùy chỉnh rắn!', 'success');
+}
+
+function resetStats() {
+    if (confirm('Bạn có chắc muốn xóa toàn bộ thống kê? Hành động này không thể hoàn tác.')) {
+        highScore = 0;
+        totalFood = 0;
+        gamesPlayed = 0;
+        totalScore = 0;
+        
+        userProfile.high_score = 0;
+        userProfile.total_food = 0;
+        userProfile.games_played = 0;
+        userProfile.total_score = 0;
+        
+        updateStats();
+        saveUserData();
+        showNotification('Đã xóa toàn bộ thống kê', 'success');
+    }
 }
 
 // ====================
@@ -1337,131 +1207,6 @@ function formatTime(seconds) {
 }
 
 // ====================
-// DATABASE OPERATIONS
-// ====================
-async function recordGameStart() {
-    if (!currentUser) return;
-    
-    const { error } = await supabase
-        .from('game_sessions')
-        .insert([{
-            user_id: currentUser.id,
-            start_time: new Date()
-        }]);
-    
-    if (error) {
-        console.error('Error recording game start:', error);
-    }
-}
-
-async function saveGameSession() {
-    if (!currentUser) return;
-    
-    const { error } = await supabase
-        .from('game_sessions')
-        .update({
-            score: score,
-            snake_length: snakeLength,
-            game_time: gameTime,
-            end_time: new Date()
-        })
-        .eq('user_id', currentUser.id)
-        .is('end_time', null);
-    
-    if (error) {
-        console.error('Error saving game session:', error);
-    }
-}
-
-async function updateHighScore() {
-    if (!currentUser) return;
-    
-    const { error } = await supabase
-        .from('profiles')
-        .update({ high_score: score })
-        .eq('id', currentUser.id);
-    
-    if (error) {
-        console.error('Error updating high score:', error);
-        return;
-    }
-    
-    // Update local profile
-    if (userProfile) {
-        userProfile.high_score = score;
-        updateUserUI();
-    }
-    
-    // Show notification
-    showNotification(`Kỷ lục mới: ${score} điểm!`, 'success');
-}
-
-// ====================
-// CHAT UI
-// ====================
-function renderChatMessages() {
-    const container = document.getElementById(currentChatTab + 'Chat');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    chatMessages
-        .filter(msg => msg.type === currentChatTab || (currentChatTab === 'friends' && msg.type === 'private'))
-        .forEach(renderMessage);
-}
-
-function renderMessage(message) {
-    const container = document.getElementById(currentChatTab + 'Chat');
-    if (!container) return;
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = 'message';
-    
-    const time = new Date(message.created_at).toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-    
-    messageElement.innerHTML = `
-        <div class="message-header">
-            <img src="${message.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=user'}" 
-                 class="message-avatar" alt="Avatar">
-            <span class="message-user">${message.profiles?.username || 'Ẩn danh'}</span>
-            <span class="message-time">${time}</span>
-        </div>
-        <div class="message-content">${escapeHtml(message.message)}</div>
-    `;
-    
-    container.appendChild(messageElement);
-    container.scrollTop = container.scrollHeight;
-}
-
-function renderOnlineUsers() {
-    const container = document.getElementById('onlineUsers');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="user-list-header">
-            <i class="fas fa-user-clock"></i> Đang online (${onlineUsers.size})
-        </div>
-    `;
-    
-    Array.from(onlineUsers.values())
-        .sort((a, b) => (b.high_score || 0) - (a.high_score || 0))
-        .forEach(user => {
-            const userElement = document.createElement('div');
-            userElement.className = 'online-user';
-            userElement.innerHTML = `
-                <img src="${user.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=user'}" 
-                     class="online-user-avatar" alt="Avatar">
-                <span class="online-user-name">${user.username}</span>
-                <span class="online-user-score">${user.high_score || 0}</span>
-            `;
-            container.appendChild(userElement);
-        });
-}
-
-// ====================
 // UTILITY FUNCTIONS
 // ====================
 function showAuthModal() {
@@ -1472,6 +1217,8 @@ function showAuthModal() {
 function showGame() {
     document.getElementById('authModal').style.display = 'none';
     document.getElementById('gameContainer').style.display = 'block';
+    updateUserUI();
+    updateStats();
 }
 
 function switchToLogin() {
@@ -1492,7 +1239,20 @@ function showNotification(message, type = 'info') {
     const container = document.getElementById('notificationContainer');
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    notification.textContent = message;
+    
+    const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        warning: 'fas fa-exclamation-triangle',
+        info: 'fas fa-info-circle'
+    };
+    
+    notification.innerHTML = `
+        <i class="${icons[type] || icons.info}"></i>
+        <div class="notification-content">
+            <div class="notification-message">${message}</div>
+        </div>
+    `;
     
     container.appendChild(notification);
     
@@ -1515,11 +1275,6 @@ function hideLoading() {
     document.getElementById('loadingScreen').style.display = 'none';
 }
 
-function playSound(type) {
-    // Placeholder for sound effects
-    console.log(`Playing sound: ${type}`);
-}
-
 function interpolateColor(color1, color2, ratio) {
     const r1 = parseInt(color1.slice(1, 3), 16);
     const g1 = parseInt(color1.slice(3, 5), 16);
@@ -1534,12 +1289,6 @@ function interpolateColor(color1, color2, ratio) {
     const b = Math.round(b1 + (b2 - b1) * ratio);
     
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // ====================
@@ -1558,6 +1307,9 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (tabName === 'register') switchToRegister();
         });
     });
+    
+    // Guest button
+    document.getElementById('guestBtn').addEventListener('click', playAsGuest);
     
     // Game controls
     document.getElementById('startBtn').addEventListener('click', startGame);
@@ -1581,14 +1333,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Color customization
     document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', () => {
-            const colorType = option.closest('.customization-group').querySelector('label').textContent;
-            document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+        option.addEventListener('click', (e) => {
+            const group = option.closest('.customization-group');
+            const label = group?.querySelector('label')?.textContent;
+            
+            // Remove active from all options in this group
+            group?.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            
+            // Add active to clicked option
             option.classList.add('active');
             
-            if (colorType.includes('chính')) {
+            // Update snake colors
+            if (label?.includes('chính')) {
                 snakeColors.primary = option.dataset.color;
-            } else if (colorType.includes('phụ')) {
+            } else if (label?.includes('phụ')) {
                 snakeColors.secondary = option.dataset.color;
             }
         });
@@ -1606,30 +1366,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save customization
     document.getElementById('saveCustomization').addEventListener('click', saveSnakeCustomization);
     
-    // Chat
+    // Reset stats
+    document.getElementById('resetStatsBtn').addEventListener('click', resetStats);
+    
+    // Chat tabs
     document.querySelectorAll('.chat-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            currentChatTab = tab.dataset.tab;
+            const tabName = tab.dataset.tab;
             document.querySelectorAll('.chat-messages').forEach(m => m.classList.remove('active'));
-            document.getElementById(currentChatTab + 'Chat').classList.add('active');
+            document.getElementById(tabName + 'Chat').classList.add('active');
         });
-    });
-    
-    // Send chat message
-    document.getElementById('sendChatBtn').addEventListener('click', () => {
-        const input = document.getElementById('chatInput');
-        if (input.value.trim()) {
-            sendChatMessage(input.value.trim());
-            input.value = '';
-        }
-    });
-    
-    document.getElementById('chatInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            document.getElementById('sendChatBtn').click();
-        }
     });
     
     // Logout
@@ -1641,16 +1389,58 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.toggle('collapsed');
     });
     
+    // Settings toggles
+    document.getElementById('soundToggle').addEventListener('change', function() {
+        showNotification(this.checked ? 'Âm thanh đã bật' : 'Âm thanh đã tắt', 'info');
+    });
+    
+    document.getElementById('musicToggle').addEventListener('change', function() {
+        showNotification(this.checked ? 'Nhạc nền đã bật' : 'Nhạc nền đã tắt', 'info');
+    });
+    
+    document.getElementById('effectsToggle').addEventListener('change', function() {
+        showNotification(this.checked ? 'Hiệu ứng đã bật' : 'Hiệu ứng đã tắt', 'info');
+    });
+    
+    // Share button
+    document.getElementById('shareScoreBtn').addEventListener('click', () => {
+        const shareText = `Tôi vừa đạt được ${score} điểm trong Snake Universe! Bạn có thể chơi thử tại: ${window.location.href}`;
+        
+        if (navigator.share) {
+            navigator.share({
+                title: 'Snake Universe',
+                text: shareText,
+                url: window.location.href
+            });
+        } else {
+            navigator.clipboard.writeText(shareText);
+            showNotification('Đã sao chép link chia sẻ vào clipboard!', 'success');
+        }
+    });
+    
     // Initialize systems
     initializeAuth();
     initializeGame();
     initializeJoystick();
     initializeKeyboardControls();
     
-    // Initialize chat after auth
+    // Show welcome message
     setTimeout(() => {
-        if (currentUser) {
-            initializeChat();
-        }
+        showNotification('Chào mừng đến với Snake Universe! Chọn "Chơi như khách" để bắt đầu.', 'info');
     }, 1000);
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    // Reinitialize game canvas if needed
+    const container = document.querySelector('.game-container');
+    if (container) {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        // Update canvas size if significantly changed
+        if (Math.abs(canvas.width - width) > 50 || Math.abs(canvas.height - height) > 50) {
+            // You can adjust viewport here if you want responsive canvas
+        }
+    }
 });

@@ -6,12 +6,17 @@
     <title>Snake Universe - Game Rắn Đa Người Chơi</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Auth Modal -->
     <div class="auth-modal" id="authModal">
         <div class="auth-container">
+            <div class="game-title">
+                <i class="fas fa-snake"></i>
+                <h1>SNAKE UNIVERSE</h1>
+                <p class="subtitle">Game rắn đa người chơi với map rộng 4000x4000</p>
+            </div>
+            
             <div class="auth-tabs">
                 <button class="auth-tab active" data-tab="login">ĐĂNG NHẬP</button>
                 <button class="auth-tab" data-tab="register">ĐĂNG KÝ</button>
@@ -23,7 +28,7 @@
                     <h2><i class="fas fa-sign-in-alt"></i> Đăng Nhập</h2>
                     <div class="input-group">
                         <i class="fas fa-envelope"></i>
-                        <input type="email" id="loginEmail" placeholder="Email" required>
+                        <input type="text" id="loginEmail" placeholder="Email hoặc tên đăng nhập" required>
                     </div>
                     <div class="input-group">
                         <i class="fas fa-lock"></i>
@@ -40,10 +45,6 @@
                 <!-- Register Form -->
                 <form id="registerForm" class="auth-form">
                     <h2><i class="fas fa-user-plus"></i> Đăng Ký</h2>
-                    <div class="input-group">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" id="registerEmail" placeholder="Email" required>
-                    </div>
                     <div class="input-group">
                         <i class="fas fa-user"></i>
                         <input type="text" id="registerUsername" placeholder="Tên người dùng" required>
@@ -63,6 +64,40 @@
                         Đã có tài khoản? <a href="#" onclick="switchToLogin()">Đăng nhập</a>
                     </p>
                 </form>
+            </div>
+            
+            <div class="guest-section">
+                <div class="divider">
+                    <span>HOẶC</span>
+                </div>
+                <button id="guestBtn" class="btn btn-secondary large">
+                    <i class="fas fa-user-secret"></i> CHƠI NHƯ KHÁCH
+                </button>
+                <p class="guest-note">
+                    <i class="fas fa-info-circle"></i> Chế độ khách sẽ lưu dữ liệu trên trình duyệt của bạn
+                </p>
+            </div>
+            
+            <div class="game-features">
+                <h3><i class="fas fa-star"></i> Tính năng nổi bật</h3>
+                <div class="features-grid">
+                    <div class="feature">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                        <span>Map rộng 4000x4000</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-bolt"></i>
+                        <span>Hệ thống tăng tốc</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-palette"></i>
+                        <span>Tùy chỉnh màu rắn</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span>Minimap bản đồ</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -87,7 +122,7 @@
                          class="user-avatar" alt="Avatar">
                     <div class="user-details">
                         <span class="username" id="usernameDisplay">Guest</span>
-                        <span class="user-score">Điểm: <span id="userHighScore">0</span></span>
+                        <span class="user-score">Điểm cao: <span id="userHighScore">0</span></span>
                     </div>
                 </div>
                 <button id="logoutBtn" class="icon-btn logout">
@@ -212,6 +247,33 @@
                         <i class="fas fa-save"></i> LƯU TÙY CHỈNH
                     </button>
                 </div>
+                
+                <div class="sidebar-section">
+                    <h3><i class="fas fa-chart-bar"></i> THỐNG KÊ</h3>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-value" id="highScore">0</div>
+                            <div class="stat-card-label">ĐIỂM CAO</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-value" id="totalFood">0</div>
+                            <div class="stat-card-label">THỨC ĂN</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-value" id="gamesPlayed">0</div>
+                            <div class="stat-card-label">LƯỢT CHƠI</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-value" id="avgScore">0</div>
+                            <div class="stat-card-label">ĐIỂM TB</div>
+                        </div>
+                    </div>
+                    
+                    <button id="resetStatsBtn" class="btn btn-warning">
+                        <i class="fas fa-trash"></i> XÓA THỐNG KÊ
+                    </button>
+                </div>
             </aside>
 
             <!-- Main Game Area -->
@@ -230,6 +292,7 @@
                             <div class="game-tips">
                                 <p><i class="fas fa-info-circle"></i> <strong>Mẹo:</strong> Sử dụng nút tăng tốc khi cần thoát hiểm</p>
                                 <p><i class="fas fa-map"></i> Khám phá các vùng đất khác nhau để tìm thức ăn đặc biệt</p>
+                                <p><i class="fas fa-arrows-alt"></i> Kéo thả joystick để di chuyển rắn theo mọi hướng</p>
                             </div>
                         </div>
                         
@@ -319,75 +382,77 @@
                 <div class="chat-header">
                     <h3><i class="fas fa-comments"></i> TRÒ CHUYỆN</h3>
                     <div class="online-count">
-                        <i class="fas fa-users"></i>
-                        <span id="onlineCount">0</span> online
+                        <i class="fas fa-user"></i>
+                        <span id="onlineCount">Offline</span>
                     </div>
                 </div>
                 
                 <div class="chat-tabs">
-                    <button class="chat-tab active" data-tab="global">
-                        <i class="fas fa-globe"></i> Global
+                    <button class="chat-tab active" data-tab="game">
+                        <i class="fas fa-gamepad"></i> Game Chat
                     </button>
-                    <button class="chat-tab" data-tab="game">
-                        <i class="fas fa-gamepad"></i> Game
-                    </button>
-                    <button class="chat-tab" data-tab="friends">
-                        <i class="fas fa-user-friends"></i> Friends
+                    <button class="chat-tab" data-tab="system">
+                        <i class="fas fa-info-circle"></i> Thông báo
                     </button>
                 </div>
                 
                 <div class="chat-content">
-                    <!-- Global Chat -->
-                    <div class="chat-messages active" id="globalChat">
-                        <div class="welcome-message">
-                            <i class="fas fa-info-circle"></i>
-                            <p>Chào mừng đến với Snake Universe! Đây là chat toàn cầu.</p>
-                        </div>
-                        <!-- Messages will be inserted here -->
-                    </div>
-                    
                     <!-- Game Chat -->
-                    <div class="chat-messages" id="gameChat">
-                        <div class="welcome-message">
+                    <div class="chat-messages active" id="gameChat">
+                        <div class="system-message">
+                            <i class="fas fa-robot"></i>
+                            <p>Chào mừng đến với Snake Universe! Chế độ chơi đơn.</p>
+                        </div>
+                        <div class="system-message">
                             <i class="fas fa-info-circle"></i>
-                            <p>Chat trong game - chỉ những người trong cùng map mới thấy.</p>
+                            <p>Đăng nhập để sử dụng chat đa người chơi</p>
                         </div>
                     </div>
                     
-                    <!-- Friends Chat -->
-                    <div class="chat-messages" id="friendsChat">
-                        <div class="welcome-message">
+                    <!-- System Messages -->
+                    <div class="chat-messages" id="systemChat">
+                        <div class="system-message">
                             <i class="fas fa-info-circle"></i>
-                            <p>Thêm bạn bè để trò chuyện riêng tư.</p>
+                            <p>Chế độ: <strong>Khách</strong></p>
+                            <p>Dữ liệu được lưu trên trình duyệt của bạn</p>
+                        </div>
+                        <div class="system-message">
+                            <i class="fas fa-gamepad"></i>
+                            <p>Điều khiển: Sử dụng joystick hoặc phím mũi tên</p>
+                        </div>
+                        <div class="system-message">
+                            <i class="fas fa-bolt"></i>
+                            <p>Tăng tốc: Nhấn nút tăng tốc để di chuyển nhanh hơn</p>
                         </div>
                     </div>
                     
-                    <!-- Online Users -->
-                    <div class="online-users" id="onlineUsers">
-                        <div class="user-list-header">
-                            <i class="fas fa-user-clock"></i> Đang online
+                    <!-- Player Stats -->
+                    <div class="player-stats">
+                        <div class="player-stat">
+                            <span class="stat-name">Điểm cao nhất:</span>
+                            <span class="stat-value" id="chatHighScore">0</span>
                         </div>
-                        <!-- Online users will be inserted here -->
+                        <div class="player-stat">
+                            <span class="stat-name">Thức ăn đã ăn:</span>
+                            <span class="stat-value" id="chatFoodEaten">0</span>
+                        </div>
+                        <div class="player-stat">
+                            <span class="stat-name">Số lượt chơi:</span>
+                            <span class="stat-value" id="chatGamesPlayed">0</span>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="chat-input-container">
                     <div class="chat-input-group">
-                        <input type="text" id="chatInput" placeholder="Nhập tin nhắn...">
-                        <button id="sendChatBtn" class="btn btn-primary">
+                        <input type="text" id="chatInput" placeholder="Chat đang tắt (chế độ khách)...">
+                        <button id="sendChatBtn" class="btn btn-primary" disabled>
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <div class="chat-actions">
-                        <button class="chat-action-btn" title="Emoji">
-                            <i class="far fa-smile"></i>
-                        </button>
-                        <button class="chat-action-btn" title="Gửi hình ảnh">
-                            <i class="far fa-image"></i>
-                        </button>
-                        <button class="chat-action-btn" title="Âm thanh">
-                            <i class="fas fa-microphone"></i>
-                        </button>
+                    <div class="chat-notice">
+                        <i class="fas fa-lock"></i>
+                        <span>Đăng nhập để mở khóa chat</span>
                     </div>
                 </div>
             </aside>
@@ -398,16 +463,16 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h4><i class="fas fa-info-circle"></i> Thông tin</h4>
-                    <p>Snake Universe &copy; 2023 - Game rắn đa người chơi</p>
-                    <p>Phiên bản: 4.0 | Người chơi online: <span id="totalPlayers">0</span></p>
+                    <p>Snake Universe &copy; 2023 - Game rắn đơn người chơi</p>
+                    <p>Phiên bản: 4.0 | Chế độ: <span id="gameMode">Khách</span></p>
                 </div>
                 <div class="footer-section">
                     <h4><i class="fas fa-trophy"></i> Bảng xếp hạng</h4>
                     <div class="leaderboard-preview" id="leaderboardPreview">
                         <div class="leaderboard-item">
                             <span class="rank">1</span>
-                            <span class="name">Đang tải...</span>
-                            <span class="score">0</span>
+                            <span class="name">Bạn</span>
+                            <span class="score" id="leaderboardScore">0</span>
                         </div>
                     </div>
                 </div>
@@ -442,8 +507,8 @@
     <div class="loading-screen" id="loadingScreen">
         <div class="loading-content">
             <div class="spinner"></div>
-            <h3>Đang kết nối với Snake Universe...</h3>
-            <p id="loadingMessage">Khởi tạo hệ thống</p>
+            <h3>Đang khởi tạo game...</h3>
+            <p id="loadingMessage">Vui lòng đợi</p>
         </div>
     </div>
 
