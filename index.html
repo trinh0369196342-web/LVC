@@ -3,515 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Universe - Game Rắn Đa Người Chơi</title>
+    <title>Snake Arena Online</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Auth Modal -->
-    <div class="auth-modal" id="authModal">
-        <div class="auth-container">
-            <div class="game-title">
-                <i class="fas fa-snake"></i>
-                <h1>SNAKE UNIVERSE</h1>
-                <p class="subtitle">Game rắn đa người chơi với map rộng 4000x4000</p>
-            </div>
-            
-            <div class="auth-tabs">
-                <button class="auth-tab active" data-tab="login">ĐĂNG NHẬP</button>
-                <button class="auth-tab" data-tab="register">ĐĂNG KÝ</button>
-            </div>
-            
-            <div class="auth-content">
-                <!-- Login Form -->
-                <form id="loginForm" class="auth-form active">
-                    <h2><i class="fas fa-sign-in-alt"></i> Đăng Nhập</h2>
-                    <div class="input-group">
-                        <i class="fas fa-envelope"></i>
-                        <input type="text" id="loginEmail" placeholder="Email hoặc tên đăng nhập" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="loginPassword" placeholder="Mật khẩu" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-sign-in-alt"></i> Đăng Nhập
-                    </button>
-                    <p class="auth-switch">
-                        Chưa có tài khoản? <a href="#" onclick="switchToRegister()">Đăng ký ngay</a>
-                    </p>
-                </form>
-                
-                <!-- Register Form -->
-                <form id="registerForm" class="auth-form">
-                    <h2><i class="fas fa-user-plus"></i> Đăng Ký</h2>
-                    <div class="input-group">
-                        <i class="fas fa-user"></i>
-                        <input type="text" id="registerUsername" placeholder="Tên người dùng" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="registerPassword" placeholder="Mật khẩu" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="registerConfirm" placeholder="Xác nhận mật khẩu" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-user-plus"></i> Đăng Ký
-                    </button>
-                    <p class="auth-switch">
-                        Đã có tài khoản? <a href="#" onclick="switchToLogin()">Đăng nhập</a>
-                    </p>
-                </form>
-            </div>
-            
-            <div class="guest-section">
-                <div class="divider">
-                    <span>HOẶC</span>
-                </div>
-                <button id="guestBtn" class="btn btn-secondary large">
-                    <i class="fas fa-user-secret"></i> CHƠI NHƯ KHÁCH
-                </button>
-                <p class="guest-note">
-                    <i class="fas fa-info-circle"></i> Chế độ khách sẽ lưu dữ liệu trên trình duyệt của bạn
-                </p>
-            </div>
-            
-            <div class="game-features">
-                <h3><i class="fas fa-star"></i> Tính năng nổi bật</h3>
-                <div class="features-grid">
-                    <div class="feature">
-                        <i class="fas fa-expand-arrows-alt"></i>
-                        <span>Map rộng 4000x4000</span>
-                    </div>
-                    <div class="feature">
-                        <i class="fas fa-bolt"></i>
-                        <span>Hệ thống tăng tốc</span>
-                    </div>
-                    <div class="feature">
-                        <i class="fas fa-palette"></i>
-                        <span>Tùy chỉnh màu rắn</span>
-                    </div>
-                    <div class="feature">
-                        <i class="fas fa-map-marked-alt"></i>
-                        <span>Minimap bản đồ</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Overlay Loading -->
+    <div id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div id="loading-text">Đang kết nối...</div>
     </div>
 
-    <!-- Main Game Container -->
-    <div class="container" id="gameContainer" style="display: none;">
-        <!-- Header -->
-        <header id="header">
-            <div class="header-left">
-                <button id="menuToggle" class="icon-btn">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="logo">
-                    <i class="fas fa-snake"></i>
-                    <h1>SNAKE UNIVERSE</h1>
-                </div>
+    <!-- Màn hình đăng nhập -->
+    <div id="login-screen" class="screen">
+        <div class="login-container">
+            <div class="game-title">
+                <h1>🐍 SNAKE ARENA</h1>
+                <p class="subtitle">Battle Royale Online</p>
             </div>
             
-            <div class="user-profile" id="userProfile">
-                <div class="user-info">
-                    <img id="userAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=snake" 
-                         class="user-avatar" alt="Avatar">
-                    <div class="user-details">
-                        <span class="username" id="usernameDisplay">Guest</span>
-                        <span class="user-score">Điểm cao: <span id="userHighScore">0</span></span>
-                    </div>
+            <div class="login-form">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" placeholder="Tên người chơi" maxlength="20">
                 </div>
-                <button id="logoutBtn" class="icon-btn logout">
-                    <i class="fas fa-sign-out-alt"></i>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Mật khẩu (tùy chọn)">
+                </div>
+                <button id="btn-login" class="btn-primary">
+                    <i class="fas fa-play"></i> BẮT ĐẦU CHƠI
                 </button>
+                <p class="guest-note">Không cần đăng ký, chơi ngay!</p>
             </div>
             
             <div class="game-stats">
-                <div class="stat-item">
-                    <span class="stat-icon"><i class="fas fa-star"></i></span>
-                    <span class="stat-value" id="currentScore">0</span>
-                    <span class="stat-label">ĐIỂM</span>
+                <div class="stat">
+                    <i class="fas fa-users"></i>
+                    <span id="online-count">0</span> đang chơi
                 </div>
-                <div class="stat-item">
-                    <span class="stat-icon"><i class="fas fa-ruler-vertical"></i></span>
-                    <span class="stat-value" id="snakeLength">1</span>
-                    <span class="stat-label">ĐỘ DÀI</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-icon"><i class="fas fa-clock"></i></span>
-                    <span class="stat-value" id="gameTime">00:00</span>
-                    <span class="stat-label">THỜI GIAN</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-icon"><i class="fas fa-bolt"></i></span>
-                    <span class="stat-value" id="boostCount">3</span>
-                    <span class="stat-label">TĂNG TỐC</span>
+                <div class="stat">
+                    <i class="fas fa-trophy"></i>
+                    <span id="top-score">0</span> điểm cao nhất
                 </div>
             </div>
-        </header>
+        </div>
+    </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Left Sidebar (Game Controls) -->
-            <aside class="sidebar-left" id="sidebarLeft">
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-map-marked-alt"></i> MINIMAP</h3>
-                    <div class="minimap-container">
-                        <canvas id="minimapCanvas"></canvas>
-                    </div>
-                    <div class="minimap-stats">
-                        <div class="minimap-stat">
-                            <span class="label">Kích thước:</span>
-                            <span class="value" id="mapSize">4000x4000</span>
-                        </div>
-                        <div class="minimap-stat">
-                            <span class="label">Vùng đang ở:</span>
-                            <span class="value" id="currentRegion">Rừng</span>
-                        </div>
-                    </div>
+    <!-- Màn hình chính -->
+    <div id="main-screen" class="screen hidden">
+        <div class="game-header">
+            <!-- Thông tin người chơi -->
+            <div class="player-info">
+                <div class="player-avatar">
+                    <span id="player-initial">A</span>
                 </div>
-                
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-gamepad"></i> ĐIỀU KHIỂN</h3>
-                    <div class="game-controls">
-                        <button id="startBtn" class="btn btn-primary">
-                            <i class="fas fa-play"></i> BẮT ĐẦU
-                        </button>
-                        <button id="pauseBtn" class="btn btn-secondary">
-                            <i class="fas fa-pause"></i> TẠM DỪNG
-                        </button>
-                        <button id="restartBtn" class="btn btn-warning">
-                            <i class="fas fa-redo"></i> CHƠI LẠI
-                        </button>
-                    </div>
-                    
-                    <div class="setting-group">
-                        <label><i class="fas fa-tachometer-alt"></i> TỐC ĐỘ</label>
-                        <div class="speed-controls">
-                            <button class="speed-btn active" data-speed="5">CHẬM</button>
-                            <button class="speed-btn" data-speed="7">TB</button>
-                            <button class="speed-btn" data-speed="10">NHANH</button>
-                            <button class="speed-btn" data-speed="15">SIÊU TỐC</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-palette"></i> TÙY CHỈNH RẮN</h3>
-                    
-                    <div class="customization-group">
-                        <label>Màu chính</label>
-                        <div class="color-picker">
-                            <div class="color-option active" data-color="#00adb5" style="background-color: #00adb5;"></div>
-                            <div class="color-option" data-color="#2ecc71" style="background-color: #2ecc71;"></div>
-                            <div class="color-option" data-color="#9b59b6" style="background-color: #9b59b6;"></div>
-                            <div class="color-option" data-color="#e74c3c" style="background-color: #e74c3c;"></div>
-                            <div class="color-option" data-color="#f1c40f" style="background-color: #f1c40f;"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="customization-group">
-                        <label>Màu phụ</label>
-                        <div class="color-picker">
-                            <div class="color-option" data-color="#393e46" style="background-color: #393e46;"></div>
-                            <div class="color-option active" data-color="#34495e" style="background-color: #34495e;"></div>
-                            <div class="color-option" data-color="#7f8c8d" style="background-color: #7f8c8d;"></div>
-                            <div class="color-option" data-color="#2c3e50" style="background-color: #2c3e50;"></div>
-                            <div class="color-option" data-color="#1a1a2e" style="background-color: #1a1a2e;"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="customization-group">
-                        <label>Hoa văn</label>
-                        <div class="pattern-controls">
-                            <button class="pattern-btn active" data-pattern="solid">
-                                <i class="fas fa-circle"></i>
-                            </button>
-                            <button class="pattern-btn" data-pattern="striped">
-                                <i class="fas fa-grip-lines"></i>
-                            </button>
-                            <button class="pattern-btn" data-pattern="spotted">
-                                <i class="fas fa-circle-dot"></i>
-                            </button>
-                            <button class="pattern-btn" data-pattern="gradient">
-                                <i class="fas fa-sliders"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <button id="saveCustomization" class="btn btn-success">
-                        <i class="fas fa-save"></i> LƯU TÙY CHỈNH
-                    </button>
-                </div>
-                
-                <div class="sidebar-section">
-                    <h3><i class="fas fa-chart-bar"></i> THỐNG KÊ</h3>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-card-value" id="highScore">0</div>
-                            <div class="stat-card-label">ĐIỂM CAO</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-card-value" id="totalFood">0</div>
-                            <div class="stat-card-label">THỨC ĂN</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-card-value" id="gamesPlayed">0</div>
-                            <div class="stat-card-label">LƯỢT CHƠI</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-card-value" id="avgScore">0</div>
-                            <div class="stat-card-label">ĐIỂM TB</div>
-                        </div>
-                    </div>
-                    
-                    <button id="resetStatsBtn" class="btn btn-warning">
-                        <i class="fas fa-trash"></i> XÓA THỐNG KÊ
-                    </button>
-                </div>
-            </aside>
-
-            <!-- Main Game Area -->
-            <main class="game-area" id="gameArea">
-                <div class="game-container">
-                    <canvas id="gameCanvas"></canvas>
-                    
-                    <!-- Game Overlay -->
-                    <div class="game-overlay" id="gameOverlay">
-                        <div class="game-start" id="gameStartScreen">
-                            <h2>CHÀO MỪNG ĐẾN SNAKE UNIVERSE!</h2>
-                            <p>Di chuyển rắn của bạn và trở thành người mạnh nhất</p>
-                            <button id="startGameBtn" class="btn btn-primary large">
-                                <i class="fas fa-play"></i> BẮT ĐẦU TRẬN ĐẤU
-                            </button>
-                            <div class="game-tips">
-                                <p><i class="fas fa-info-circle"></i> <strong>Mẹo:</strong> Sử dụng nút tăng tốc khi cần thoát hiểm</p>
-                                <p><i class="fas fa-map"></i> Khám phá các vùng đất khác nhau để tìm thức ăn đặc biệt</p>
-                                <p><i class="fas fa-arrows-alt"></i> Kéo thả joystick để di chuyển rắn theo mọi hướng</p>
-                            </div>
-                        </div>
-                        
-                        <div class="game-over" id="gameOverScreen">
-                            <h2>GAME OVER!</h2>
-                            <div class="final-stats">
-                                <div class="final-stat">
-                                    <span class="final-label">ĐIỂM SỐ</span>
-                                    <span class="final-value" id="finalScore">0</span>
-                                </div>
-                                <div class="final-stat">
-                                    <span class="final-label">ĐỘ DÀI</span>
-                                    <span class="final-value" id="finalLength">1</span>
-                                </div>
-                                <div class="final-stat">
-                                    <span class="final-label">THỜI GIAN</span>
-                                    <span class="final-value" id="finalTime">00:00</span>
-                                </div>
-                            </div>
-                            <div class="game-actions">
-                                <button id="playAgainBtn" class="btn btn-primary">
-                                    <i class="fas fa-redo"></i> CHƠI LẠI
-                                </button>
-                                <button id="shareScoreBtn" class="btn btn-secondary">
-                                    <i class="fas fa-share"></i> CHIA SẺ
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Pause Screen -->
-                    <div class="pause-screen" id="pauseScreen">
-                        <h2><i class="fas fa-pause"></i> TẠM DỪNG</h2>
-                        <p>Nhấn SPACE hoặc nút tiếp tục để tiếp tục</p>
-                        <button id="resumeBtn" class="btn btn-primary">
-                            <i class="fas fa-play"></i> TIẾP TỤC
-                        </button>
-                    </div>
-                    
-                    <!-- Left Control - Boost Button -->
-                    <div class="control-left" id="controlLeft">
-                        <div class="boost-container">
-                            <button class="boost-btn" id="boostBtn">
-                                <i class="fas fa-bolt"></i>
-                                <span class="boost-text">TĂNG TỐC</span>
-                            </button>
-                            <div class="boost-info">
-                                <div class="boost-count" id="boostCountDisplay">3/3</div>
-                                <div class="boost-cooldown">
-                                    <div class="cooldown-bar" id="cooldownBar"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Right Control - Movement Joystick -->
-                    <div class="control-right" id="controlRight">
-                        <div class="movement-container">
-                            <div class="joystick" id="joystick">
-                                <div class="joystick-bg">
-                                    <div class="direction-markers">
-                                        <div class="marker up"><i class="fas fa-arrow-up"></i></div>
-                                        <div class="marker down"><i class="fas fa-arrow-down"></i></div>
-                                        <div class="marker left"><i class="fas fa-arrow-left"></i></div>
-                                        <div class="marker right"><i class="fas fa-arrow-right"></i></div>
-                                    </div>
-                                </div>
-                                <div class="joystick-handle" id="joystickHandle"></div>
-                            </div>
-                            <div class="joystick-label">
-                                <i class="fas fa-arrows-rotate"></i> DI CHUYỂN 360°
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Map Coordinates -->
-                    <div class="map-coordinates">
-                        <span>X: <span id="playerX">2000</span></span>
-                        <span>Y: <span id="playerY">2000</span></span>
-                        <span>Vùng: <span id="playerRegion">Rừng</span></span>
-                    </div>
-                </div>
-            </main>
-
-            <!-- Right Sidebar (Chat) -->
-            <aside class="sidebar-right" id="sidebarRight">
-                <div class="chat-header">
-                    <h3><i class="fas fa-comments"></i> TRÒ CHUYỆN</h3>
-                    <div class="online-count">
-                        <i class="fas fa-user"></i>
-                        <span id="onlineCount">Offline</span>
-                    </div>
-                </div>
-                
-                <div class="chat-tabs">
-                    <button class="chat-tab active" data-tab="game">
-                        <i class="fas fa-gamepad"></i> Game Chat
-                    </button>
-                    <button class="chat-tab" data-tab="system">
-                        <i class="fas fa-info-circle"></i> Thông báo
-                    </button>
-                </div>
-                
-                <div class="chat-content">
-                    <!-- Game Chat -->
-                    <div class="chat-messages active" id="gameChat">
-                        <div class="system-message">
-                            <i class="fas fa-robot"></i>
-                            <p>Chào mừng đến với Snake Universe! Chế độ chơi đơn.</p>
-                        </div>
-                        <div class="system-message">
-                            <i class="fas fa-info-circle"></i>
-                            <p>Đăng nhập để sử dụng chat đa người chơi</p>
-                        </div>
-                    </div>
-                    
-                    <!-- System Messages -->
-                    <div class="chat-messages" id="systemChat">
-                        <div class="system-message">
-                            <i class="fas fa-info-circle"></i>
-                            <p>Chế độ: <strong>Khách</strong></p>
-                            <p>Dữ liệu được lưu trên trình duyệt của bạn</p>
-                        </div>
-                        <div class="system-message">
-                            <i class="fas fa-gamepad"></i>
-                            <p>Điều khiển: Sử dụng joystick hoặc phím mũi tên</p>
-                        </div>
-                        <div class="system-message">
-                            <i class="fas fa-bolt"></i>
-                            <p>Tăng tốc: Nhấn nút tăng tốc để di chuyển nhanh hơn</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Player Stats -->
+                <div class="player-details">
+                    <h3 id="player-name">Anonymous</h3>
                     <div class="player-stats">
-                        <div class="player-stat">
-                            <span class="stat-name">Điểm cao nhất:</span>
-                            <span class="stat-value" id="chatHighScore">0</span>
-                        </div>
-                        <div class="player-stat">
-                            <span class="stat-name">Thức ăn đã ăn:</span>
-                            <span class="stat-value" id="chatFoodEaten">0</span>
-                        </div>
-                        <div class="player-stat">
-                            <span class="stat-name">Số lượt chơi:</span>
-                            <span class="stat-value" id="chatGamesPlayed">0</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="chat-input-container">
-                    <div class="chat-input-group">
-                        <input type="text" id="chatInput" placeholder="Chat đang tắt (chế độ khách)...">
-                        <button id="sendChatBtn" class="btn btn-primary" disabled>
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-                    <div class="chat-notice">
-                        <i class="fas fa-lock"></i>
-                        <span>Đăng nhập để mở khóa chat</span>
-                    </div>
-                </div>
-            </aside>
-        </div>
-
-        <!-- Footer -->
-        <footer>
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4><i class="fas fa-info-circle"></i> Thông tin</h4>
-                    <p>Snake Universe &copy; 2023 - Game rắn đơn người chơi</p>
-                    <p>Phiên bản: 4.0 | Chế độ: <span id="gameMode">Khách</span></p>
-                </div>
-                <div class="footer-section">
-                    <h4><i class="fas fa-trophy"></i> Bảng xếp hạng</h4>
-                    <div class="leaderboard-preview" id="leaderboardPreview">
-                        <div class="leaderboard-item">
-                            <span class="rank">1</span>
-                            <span class="name">Bạn</span>
-                            <span class="score" id="leaderboardScore">0</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="footer-section">
-                    <h4><i class="fas fa-cog"></i> Cài đặt nhanh</h4>
-                    <div class="quick-settings">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="soundToggle" checked>
-                            <span class="slider"></span>
-                            <span>Âm thanh</span>
-                        </label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="musicToggle" checked>
-                            <span class="slider"></span>
-                            <span>Nhạc nền</span>
-                        </label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="effectsToggle" checked>
-                            <span class="slider"></span>
-                            <span>Hiệu ứng</span>
-                        </label>
+                        <span class="stat"><i class="fas fa-star"></i> Level <span id="player-level">1</span></span>
+                        <span class="stat"><i class="fas fa-trophy"></i> <span id="player-score">0</span></span>
                     </div>
                 </div>
             </div>
-        </footer>
-    </div>
 
-    <!-- Notification System -->
-    <div class="notification-container" id="notificationContainer"></div>
+            <!-- Thông tin đội -->
+            <div class="team-info">
+                <div id="team-display" class="hidden">
+                    <h4><i class="fas fa-users"></i> <span id="team-name">Đội của bạn</span></h4>
+                    <div id="team-members"></div>
+                </div>
+                <div id="no-team">
+                    <p>Chưa có đội</p>
+                    <button id="btn-create-team" class="btn-small">
+                        <i class="fas fa-plus"></i> Tạo đội
+                    </button>
+                    <button id="btn-join-team" class="btn-small">
+                        <i class="fas fa-sign-in-alt"></i> Tham gia
+                    </button>
+                </div>
+            </div>
 
-    <!-- Loading Screen -->
-    <div class="loading-screen" id="loadingScreen">
-        <div class="loading-content">
-            <div class="spinner"></div>
-            <h3>Đang khởi tạo game...</h3>
-            <p id="loadingMessage">Vui lòng đợi</p>
+            <!-- Thông tin game -->
+            <div class="game-info">
+                <div class="info-box">
+                    <h4><i class="fas fa-map"></i> ARENA</h4>
+                    <p>Players: <span id="game-players">0/50</span></p>
+                    <p>Status: <span id="game-status">Waiting</span></p>
+                </div>
+                <button id="btn-leave-game" class="btn-danger hidden">
+                    <i class="fas fa-sign-out-alt"></i> Rời game
+                </button>
+            </div>
+        </div>
+
+        <!-- Khu vực game chính -->
+        <div class="game-container">
+            <!-- Canvas chính -->
+            <div class="main-game">
+                <canvas id="game-canvas"></canvas>
+                <div id="game-overlay" class="hidden">
+                    <h2>GAME OVER</h2>
+                    <p>Điểm: <span id="final-score">0</span></p>
+                    <button id="btn-play-again" class="btn-primary">
+                        <i class="fas fa-redo"></i> Chơi lại
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mini Map -->
+            <div class="mini-map-container">
+                <div class="mini-map-header">
+                    <h4><i class="fas fa-map-marked-alt"></i> MINI MAP</h4>
+                    <div class="map-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #3498db;"></span>
+                            <span>Đồng đội</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #e74c3c;"></span>
+                            <span>Địch</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: #2ecc71;"></span>
+                            <span>Thức ăn</span>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="mini-map"></canvas>
+                <div class="mini-map-controls">
+                    <button id="btn-zoom-in" class="btn-icon"><i class="fas fa-search-plus"></i></button>
+                    <button id="btn-zoom-out" class="btn-icon"><i class="fas fa-search-minus"></i></button>
+                    <button id="btn-center-map" class="btn-icon"><i class="fas fa-crosshairs"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thông tin điều khiển -->
+        <div class="controls-panel">
+            <div class="controls-info">
+                <h4><i class="fas fa-gamepad"></i> ĐIỀU KHIỂN</h4>
+                <div class="controls-list">
+                    <div class="control-item">
+                        <span class="key">W/A/S/D</span>
+                        <span>Di chuyển</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">SPACE</span>
+                        <span>Tăng tốc</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">M</span>
+                        <span>Bật/tắt mini map</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">T</span>
+                        <span>Chat đội</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách người chơi -->
+            <div class="players-list">
+                <h4><i class="fas fa-list-ol"></i> BẢNG XẾP HẠNG</h4>
+                <div id="leaderboard">
+                    <!-- Được tạo động bằng JavaScript -->
+                </div>
+            </div>
+
+            <!-- Chat box -->
+            <div class="chat-box">
+                <div class="chat-header">
+                    <h4><i class="fas fa-comments"></i> TRÒ CHUYỆN</h4>
+                    <select id="chat-type">
+                        <option value="global">Toàn game</option>
+                        <option value="team">Đội</option>
+                    </select>
+                </div>
+                <div id="chat-messages"></div>
+                <div class="chat-input">
+                    <input type="text" id="chat-input" placeholder="Nhắn tin...">
+                    <button id="btn-send" class="btn-icon">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal tạo đội -->
+        <div id="team-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3><i class="fas fa-users"></i> TẠO ĐỘI MỚI</h3>
+                <div class="input-group">
+                    <input type="text" id="team-name-input" placeholder="Tên đội" maxlength="20">
+                </div>
+                <div class="input-group">
+                    <input type="text" id="team-tag-input" placeholder="Tag đội (VD: ABC)" maxlength="4">
+                </div>
+                <div class="input-group">
+                    <select id="team-privacy">
+                        <option value="public">Công khai</option>
+                        <option value="private">Riêng tư</option>
+                        <option value="password">Có mật khẩu</option>
+                    </select>
+                </div>
+                <div class="input-group hidden" id="team-password-group">
+                    <input type="password" id="team-password" placeholder="Mật khẩu đội">
+                </div>
+                <div class="modal-buttons">
+                    <button id="btn-confirm-create" class="btn-primary">Tạo đội</button>
+                    <button id="btn-cancel-create" class="btn-secondary">Hủy</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Scripts -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="game.js"></script>
 </body>
 </html>

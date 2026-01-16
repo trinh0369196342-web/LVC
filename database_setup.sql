@@ -1,349 +1,236 @@
--- ====================
--- SUPABASE DATABASE SETUP
--- ====================
+-- Create tables for Snake Game
 
--- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- ====================
--- PROFILES TABLE
--- ====================
+-- Profiles table (extends auth.users)
 CREATE TABLE IF NOT EXISTS profiles (
-    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    id UUID REFERENCES auth.users(id) PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    username TEXT UNIQUE NOT NULL,
+    phone TEXT,
+    username TEXT UNIQUE,
     avatar_url TEXT,
     high_score INTEGER DEFAULT 0,
     total_games INTEGER DEFAULT 0,
     total_play_time INTEGER DEFAULT 0,
-    map_explored INTEGER DEFAULT 0,
-    last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- ====================
--- SNAKE CUSTOMIZATIONS
--- ====================
+-- Snake customizations
 CREATE TABLE IF NOT EXISTS snake_customizations (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    color_primary TEXT DEFAULT '#00adb5',
-    color_secondary TEXT DEFAULT '#34495e',
-    pattern TEXT DEFAULT 'solid',
-    accessories JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    color_primary TEXT DEFAULT '#48bb78',
+    color_secondary TEXT DEFAULT '#38a169',
+    pattern TEXT DEFAULT 'default',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(user_id)
 );
 
--- ====================
--- GAME SESSIONS
--- ====================
+-- Game sessions
 CREATE TABLE IF NOT EXISTS game_sessions (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     score INTEGER NOT NULL,
     snake_length INTEGER NOT NULL,
     game_time INTEGER NOT NULL,
-    map_explored INTEGER DEFAULT 0,
-    food_eaten INTEGER DEFAULT 0,
-    obstacles_hit INTEGER DEFAULT 0,
-    boost_used INTEGER DEFAULT 0,
-    start_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    end_time TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    food_eaten INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- ====================
--- CHAT MESSAGES
--- ====================
-CREATE TABLE IF NOT EXISTS chat_messages (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    message TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('global', 'game', 'private', 'system')),
-    recipient_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- ====================
--- FRIENDSHIPS
--- ====================
-CREATE TABLE IF NOT EXISTS friendships (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    friend_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'blocked')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id, friend_id)
-);
-
--- ====================
--- LEADERBOARD (Weekly)
--- ====================
+-- Weekly leaderboard
 CREATE TABLE IF NOT EXISTS weekly_leaderboard (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     score INTEGER NOT NULL,
     week_start DATE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, week_start)
 );
 
--- ====================
--- ACHIEVEMENTS
--- ====================
+-- Chat messages
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('global', 'game', 'private')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Friendships
+CREATE TABLE IF NOT EXISTS friendships (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    friend_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'blocked')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    UNIQUE(user_id, friend_id)
+);
+
+-- Achievements
 CREATE TABLE IF NOT EXISTS achievements (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     achievement_id TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
-    icon_url TEXT,
-    unlocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    unlocked_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(user_id, achievement_id)
 );
 
--- ====================
--- INDEXES
--- ====================
-CREATE INDEX IF NOT EXISTS idx_profiles_high_score ON profiles(high_score DESC);
-CREATE INDEX IF NOT EXISTS idx_profiles_last_seen ON profiles(last_seen DESC);
-CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_game_sessions_score ON game_sessions(score DESC);
-CREATE INDEX IF NOT EXISTS idx_game_sessions_created_at ON game_sessions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_type_created_at ON chat_messages(type, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
-CREATE INDEX IF NOT EXISTS idx_weekly_leaderboard_week_score ON weekly_leaderboard(week_start DESC, score DESC);
-CREATE INDEX IF NOT EXISTS idx_friendships_user_status ON friendships(user_id, status);
-
--- ====================
--- ROW LEVEL SECURITY
--- ====================
+-- Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE snake_customizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE weekly_leaderboard ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE weekly_leaderboard ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 
--- ====================
--- RLS POLICIES
--- ====================
+-- RLS Policies
 
--- Profiles: Users can read all profiles, but only update their own
-CREATE POLICY "Profiles are viewable by everyone" ON profiles
-    FOR SELECT USING (true);
+-- Profiles: Everyone can read, users can update their own
+CREATE POLICY "Public profiles are viewable by everyone" 
+    ON profiles FOR SELECT USING (true);
 
-CREATE POLICY "Users can update own profile" ON profiles
-    FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" 
+    ON profiles FOR UPDATE USING (auth.uid() = id);
 
--- Snake Customizations: Users can read all, but only modify own
-CREATE POLICY "Snake customizations are viewable by everyone" ON snake_customizations
-    FOR SELECT USING (true);
+-- Snake customizations: Everyone can read, users can manage their own
+CREATE POLICY "Snake customizations are viewable by everyone" 
+    ON snake_customizations FOR SELECT USING (true);
 
-CREATE POLICY "Users can update own snake customization" ON snake_customizations
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own snake customization" 
+    ON snake_customizations FOR ALL USING (auth.uid() = user_id);
 
--- Game Sessions: Users can read all, but only insert/update own
-CREATE POLICY "Game sessions are viewable by everyone" ON game_sessions
-    FOR SELECT USING (true);
+-- Game sessions: Everyone can read, users can insert their own
+CREATE POLICY "Game sessions are viewable by everyone" 
+    ON game_sessions FOR SELECT USING (true);
 
-CREATE POLICY "Users can insert own game sessions" ON game_sessions
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can insert own game sessions" 
+    ON game_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Chat Messages: Users can read global/game messages, private only between users
-CREATE POLICY "Global and game chat messages are viewable by everyone" ON chat_messages
-    FOR SELECT USING (type IN ('global', 'game', 'system'));
+-- Weekly leaderboard: Everyone can read
+CREATE POLICY "Weekly leaderboard is viewable by everyone" 
+    ON weekly_leaderboard FOR SELECT USING (true);
 
-CREATE POLICY "Private messages are viewable by participants" ON chat_messages
-    FOR SELECT USING (
-        auth.uid() = user_id OR 
-        (type = 'private' AND auth.uid() = recipient_id)
-    );
+-- Chat messages: Users can insert their own, read based on type
+CREATE POLICY "Users can insert own chat messages" 
+    ON chat_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert chat messages" ON chat_messages
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Global chat messages are viewable by everyone" 
+    ON chat_messages FOR SELECT USING (type = 'global');
 
--- Friendships: Users can only see their own friendships
-CREATE POLICY "Users can see own friendships" ON friendships
-    FOR ALL USING (auth.uid() = user_id OR auth.uid() = friend_id);
+-- Friendships: Users can manage their own relationships
+CREATE POLICY "Users can manage own friendships" 
+    ON friendships FOR ALL USING (auth.uid() = user_id OR auth.uid() = friend_id);
 
--- Weekly Leaderboard: Readable by everyone
-CREATE POLICY "Leaderboard is viewable by everyone" ON weekly_leaderboard
-    FOR SELECT USING (true);
+-- Achievements: Everyone can read
+CREATE POLICY "Achievements are viewable by everyone" 
+    ON achievements FOR SELECT USING (true);
 
-CREATE POLICY "Users can insert own leaderboard entries" ON weekly_leaderboard
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+-- Functions and Triggers
 
--- Achievements: Readable by everyone
-CREATE POLICY "Achievements are viewable by everyone" ON achievements
-    FOR SELECT USING (true);
-
-CREATE POLICY "Users can insert own achievements" ON achievements
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- ====================
--- FUNCTIONS & TRIGGERS
--- ====================
-
--- Update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+-- Function to create profile when user signs up
+CREATE OR REPLACE FUNCTION handle_new_user_snake()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_snake_customizations_updated_at BEFORE UPDATE ON snake_customizations
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_friendships_updated_at BEFORE UPDATE ON friendships
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Auto-create profile on user signup
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO profiles (id, email, username, avatar_url)
+    INSERT INTO public.profiles (id, email, username, avatar_url)
     VALUES (
         NEW.id,
         NEW.email,
-        NEW.raw_user_meta_data->>'username',
-        'https://api.dicebear.com/7.x/avataaars/svg?seed=' || (NEW.raw_user_meta_data->>'username')
+        COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
+        CASE 
+            WHEN NEW.raw_user_meta_data->>'avatar_url' IS NOT NULL 
+            THEN NEW.raw_user_meta_data->>'avatar_url'
+            ELSE 'https://ui-avatars.com/api/?name=' || 
+                 encode_hex(NEW.id::text::bytea) || 
+                 '&background=random'
+        END
     );
     
-    -- Create default snake customization
-    INSERT INTO snake_customizations (user_id)
+    INSERT INTO public.snake_customizations (user_id)
     VALUES (NEW.id);
     
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+-- Trigger to create profile on user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION handle_new_user_snake();
 
--- Update high score in profiles when game session ends
-CREATE OR REPLACE FUNCTION update_user_high_score()
+-- Function to update user high score
+CREATE OR REPLACE FUNCTION update_user_high_score_snake()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.end_time IS NOT NULL AND NEW.score > 0 THEN
-        UPDATE profiles
-        SET 
-            high_score = GREATEST(high_score, NEW.score),
-            total_games = total_games + 1,
-            total_play_time = total_play_time + NEW.game_time,
-            map_explored = map_explored + NEW.map_explored,
-            last_seen = NOW()
-        WHERE id = NEW.user_id;
-        
-        -- Update weekly leaderboard
-        INSERT INTO weekly_leaderboard (user_id, score, week_start)
-        VALUES (
-            NEW.user_id,
-            NEW.score,
-            DATE_TRUNC('week', NOW())::DATE
-        )
-        ON CONFLICT (user_id, week_start) 
-        DO UPDATE SET 
-            score = GREATEST(weekly_leaderboard.score, NEW.score),
-            created_at = NOW();
-    END IF;
+    -- Update profiles table
+    UPDATE profiles 
+    SET 
+        high_score = GREATEST(high_score, NEW.score),
+        total_games = total_games + 1,
+        total_play_time = total_play_time + NEW.game_time,
+        updated_at = NOW()
+    WHERE id = NEW.user_id;
+    
+    -- Update weekly leaderboard
+    INSERT INTO weekly_leaderboard (user_id, score, week_start)
+    VALUES (
+        NEW.user_id,
+        NEW.score,
+        DATE_TRUNC('week', NEW.created_at)
+    )
+    ON CONFLICT (user_id, week_start) 
+    DO UPDATE SET score = GREATEST(weekly_leaderboard.score, EXCLUDED.score);
+    
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER on_game_session_completed AFTER UPDATE ON game_sessions
-    FOR EACH ROW EXECUTE FUNCTION update_user_high_score();
+-- Trigger to update high score after game session
+DROP TRIGGER IF EXISTS on_game_session_created ON game_sessions;
+CREATE TRIGGER on_game_session_created
+    AFTER INSERT ON game_sessions
+    FOR EACH ROW EXECUTE FUNCTION update_user_high_score_snake();
 
--- ====================
--- VIEWS
--- ====================
+-- Function to check and award achievements
+CREATE OR REPLACE FUNCTION check_achievements_snake(user_uuid UUID, game_score INTEGER, snake_len INTEGER, food_count INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    -- First Game Achievement
+    IF NOT EXISTS (SELECT 1 FROM achievements WHERE user_id = user_uuid AND achievement_id = 'first_game') THEN
+        INSERT INTO achievements (user_id, achievement_id, name, description)
+        VALUES (user_uuid, 'first_game', 'Game On!', 'Play your first game');
+    END IF;
+    
+    -- Score-based achievements
+    IF game_score >= 100 AND NOT EXISTS (SELECT 1 FROM achievements WHERE user_id = user_uuid AND achievement_id = 'score_100') THEN
+        INSERT INTO achievements (user_id, achievement_id, name, description)
+        VALUES (user_uuid, 'score_100', 'Centurion', 'Score 100 points in a single game');
+    END IF;
+    
+    IF game_score >= 500 AND NOT EXISTS (SELECT 1 FROM achievements WHERE user_id = user_uuid AND achievement_id = 'score_500') THEN
+        INSERT INTO achievements (user_id, achievement_id, name, description)
+        VALUES (user_uuid, 'score_500', 'Master Slitherer', 'Score 500 points in a single game');
+    END IF;
+    
+    -- Length-based achievements
+    IF snake_len >= 20 AND NOT EXISTS (SELECT 1 FROM achievements WHERE user_id = user_uuid AND achievement_id = 'length_20') THEN
+        INSERT INTO achievements (user_id, achievement_id, name, description)
+        VALUES (user_uuid, 'length_20', 'Long Boi', 'Grow your snake to 20 segments');
+    END IF;
+    
+    -- Food-based achievements
+    IF food_count >= 10 AND NOT EXISTS (SELECT 1 FROM achievements WHERE user_id = user_uuid AND achievement_id = 'food_10') THEN
+        INSERT INTO achievements (user_id, achievement_id, name, description)
+        VALUES (user_uuid, 'food_10', 'Hungry Snake', 'Eat 10 food items in a single game');
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
 
--- Online users view
-CREATE OR REPLACE VIEW online_users AS
-SELECT 
-    id,
-    username,
-    avatar_url,
-    high_score,
-    last_seen,
-    CASE 
-        WHEN last_seen > NOW() - INTERVAL '5 minutes' THEN 'online'
-        WHEN last_seen > NOW() - INTERVAL '1 hour' THEN 'away'
-        ELSE 'offline'
-    END as status
-FROM profiles
-ORDER BY 
-    CASE 
-        WHEN last_seen > NOW() - INTERVAL '5 minutes' THEN 1
-        WHEN last_seen > NOW() - INTERVAL '1 hour' THEN 2
-        ELSE 3
-    END,
-    high_score DESC;
-
--- Global leaderboard view
-CREATE OR REPLACE VIEW global_leaderboard AS
-SELECT 
-    p.id,
-    p.username,
-    p.avatar_url,
-    p.high_score,
-    p.total_games,
-    RANK() OVER (ORDER BY p.high_score DESC) as rank
-FROM profiles p
-WHERE p.high_score > 0
-ORDER BY p.high_score DESC
-LIMIT 100;
-
--- Weekly leaderboard view
-CREATE OR REPLACE VIEW current_weekly_leaderboard AS
-SELECT 
-    w.user_id,
-    p.username,
-    p.avatar_url,
-    w.score,
-    RANK() OVER (ORDER BY w.score DESC) as rank,
-    w.week_start
-FROM weekly_leaderboard w
-JOIN profiles p ON p.id = w.user_id
-WHERE w.week_start = DATE_TRUNC('week', NOW())::DATE
-ORDER BY w.score DESC
-LIMIT 50;
-
--- Recent chat messages view
-CREATE OR REPLACE VIEW recent_chat_messages AS
-SELECT 
-    cm.*,
-    p.username,
-    p.avatar_url
-FROM chat_messages cm
-JOIN profiles p ON p.id = cm.user_id
-WHERE cm.type IN ('global', 'game', 'system')
-ORDER BY cm.created_at DESC
-LIMIT 100;
-
--- ====================
--- SAMPLE DATA
--- ====================
-INSERT INTO achievements (achievement_id, name, description, icon_url) VALUES
-    ('first_game', 'Trò chơi đầu tiên', 'Hoàn thành trò chơi đầu tiên', '🏆'),
-    ('score_100', '100 điểm', 'Đạt 100 điểm trong một trò chơi', '⭐'),
-    ('score_500', '500 điểm', 'Đạt 500 điểm trong một trò chơi', '🌟'),
-    ('score_1000', '1000 điểm', 'Đạt 1000 điểm trong một trò chơi', '💎'),
-    ('snake_length_10', 'Rắn dài', 'Đạt độ dài rắn 10', '🐍'),
-    ('snake_length_50', 'Rắn khổng lồ', 'Đạt độ dài rắn 50', '🐉'),
-    ('explorer', 'Nhà thám hiểm', 'Khám phá 50% bản đồ', '🗺️'),
-    ('food_master', 'Bậc thầy thức ăn', 'Ăn 1000 thức ăn', '🍎'),
-    ('speed_demon', 'Quỷ tốc độ', 'Sử dụng tăng tốc 100 lần', '⚡'),
-    ('social_butterfly', 'Bướm xã hội', 'Gửi 100 tin nhắn chat', '💬')
-ON CONFLICT DO NOTHING;
+-- Indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_profiles_high_score ON profiles(high_score DESC);
+CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_game_sessions_score ON game_sessions(score DESC);
+CREATE INDEX IF NOT EXISTS idx_weekly_leaderboard_week_score ON weekly_leaderboard(week_start DESC, score DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
